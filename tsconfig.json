@@ -12,6 +12,7 @@
     "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "types": ["vite/client", "web-bluetooth"]

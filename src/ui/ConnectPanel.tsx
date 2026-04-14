@@ -36,15 +36,15 @@ export function ConnectPanel({ status, onConnect, onDisconnect, onRequestState, 
           className="secondary"
           onClick={onMarkSolved}
           disabled={!connected}
-          title="Hold the cube physically solved, then click to sync the app to reality."
+          title="Physically solve the cube, then click to re-sync the app."
         >
-          Mark as solved
+          Reset Cube
         </button>
       </div>
       {connected && (
         <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8, marginBottom: 0 }}>
           If the 3D view doesn't match your cube, hold it solved and click
-          <strong> Mark as solved</strong> to re-sync.
+          <strong> Reset Cube</strong> to re-sync.
         </p>
       )}
     </div>

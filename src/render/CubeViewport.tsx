@@ -74,7 +74,7 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProp
 export function CubeViewport({ facelets, gyroCurrentRef, gyroResetRef }: CubeViewportProps) {
   return (
     <Canvas
-      camera={{ position: [5.5, 5.0, 6.8], fov: 34 }}
+      camera={{ position: [0, 2.5, 9], fov: 34 }}
       style={{ width: "100%", flex: 1, background: "#0f1115" }}
     >
       <ambientLight intensity={0.55} />

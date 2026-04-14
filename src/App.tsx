@@ -24,6 +24,7 @@ export function App() {
           solved={cube.solved}
           connected={connected}
           facelets={cube.facelets}
+          lastMove={cube.lastMove}
         />
         <StatusPanel status={cube.status} solved={cube.solved} />
         <DebugPanel

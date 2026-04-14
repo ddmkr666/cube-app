@@ -13,8 +13,8 @@ interface CubeViewportProps {
 export function CubeViewport({ facelets }: CubeViewportProps) {
   return (
     <Canvas
-      camera={{ position: [4.2, 3.8, 5.2], fov: 38 }}
-      style={{ width: "100%", height: "100%", background: "#0f1115" }}
+      camera={{ position: [5.5, 5.0, 6.8], fov: 34 }}
+      style={{ width: "100%", flex: 1, background: "#0f1115" }}
     >
       <ambientLight intensity={0.55} />
       <directionalLight position={[6, 8, 4]} intensity={0.9} />

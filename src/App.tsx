@@ -1,12 +1,15 @@
 import { useCubeConnection } from "./hooks/useCubeConnection";
+import { useScramble } from "./hooks/useScramble";
 import { CubeViewport } from "./render/CubeViewport";
 import { ConnectPanel } from "./ui/ConnectPanel";
 import { ScramblePanel } from "./ui/ScramblePanel";
+import { ScrambleDisplay } from "./ui/ScrambleDisplay";
 import { DebugPanel } from "./ui/DebugPanel";
 import { StatusPanel } from "./ui/StatusPanel";
 
 export function App() {
   const cube = useCubeConnection();
+  const scramble = useScramble(cube.lastMove, cube.solved);
   const connected = cube.status.state === "connected";
 
   return (
@@ -20,11 +23,7 @@ export function App() {
           onRequestState={cube.requestFacelets}
           onMarkSolved={cube.markSolved}
         />
-        <ScramblePanel
-          solved={cube.solved}
-          connected={connected}
-          lastMove={cube.lastMove}
-        />
+        <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />
         <StatusPanel status={cube.status} solved={cube.solved} />
         <DebugPanel
           facelets={cube.facelets}
@@ -33,6 +32,7 @@ export function App() {
         />
       </aside>
       <main className="app__main">
+        <ScrambleDisplay scramble={scramble} />
         <CubeViewport facelets={cube.facelets} />
       </main>
     </div>

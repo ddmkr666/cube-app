@@ -55,7 +55,9 @@ html, body, #root {
 
 .app__main {
   grid-area: main;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .panel {
@@ -120,4 +122,59 @@ button.secondary {
   font-size: 11px;
   word-break: break-all;
   color: var(--muted);
+}
+
+/* ── Scramble display (above the 3D cube) ─────────────────────────── */
+
+.scramble-display {
+  flex-shrink: 0;
+  padding: 16px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scramble-display__moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.scramble-move {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 26px;
+  font-weight: 600;
+  min-width: 2.2ch;
+  text-align: center;
+  transition: color 0.1s;
+}
+
+.scramble-move--done     { color: var(--ok); }
+.scramble-move--current  { color: #ffffff; }
+.scramble-move--half     { color: var(--warn); }
+.scramble-move--error    { color: var(--err); }
+.scramble-move--upcoming { color: #3a4153; }
+
+.scramble-display__correction {
+  font-size: 14px;
+  color: var(--err);
+}
+.scramble-display__correction strong {
+  font-size: 20px;
+  font-family: ui-monospace, monospace;
+  color: var(--warn);
+}
+
+.scramble-display__hint {
+  font-size: 13px;
+  color: var(--warn);
+}
+
+.scramble-display__done {
+  font-size: 14px;
+  color: var(--ok);
+  font-weight: 600;
 }

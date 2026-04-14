@@ -6,9 +6,10 @@ interface Props {
   onDisconnect: () => void;
   onRequestState: () => void;
   onMarkSolved: () => void;
+  onResetGyro: () => void;
 }
 
-export function ConnectPanel({ status, onConnect, onDisconnect, onRequestState, onMarkSolved }: Props) {
+export function ConnectPanel({ status, onConnect, onDisconnect, onRequestState, onMarkSolved, onResetGyro }: Props) {
   const connected = status.state === "connected";
   const connecting = status.state === "connecting";
   const supported = typeof navigator !== "undefined" && "bluetooth" in navigator;
@@ -40,11 +41,19 @@ export function ConnectPanel({ status, onConnect, onDisconnect, onRequestState, 
         >
           Reset Cube
         </button>
+        <button
+          className="secondary"
+          onClick={onResetGyro}
+          disabled={!connected}
+          title="Hold the cube white-side up, green facing you, then click to sync the 3D orientation."
+        >
+          Reset Gyro
+        </button>
       </div>
       {connected && (
         <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8, marginBottom: 0 }}>
-          If the 3D view doesn't match your cube, hold it solved and click
-          <strong> Reset Cube</strong> to re-sync.
+          <strong>Reset Cube</strong>: hold solved, click to sync colours.{" "}
+          <strong>Reset Gyro</strong>: hold white up / green front, click to sync 3D rotation.
         </p>
       )}
     </div>

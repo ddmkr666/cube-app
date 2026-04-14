@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ConnectionStatus, GanCubeService } from "../bluetooth/ganCube";
+import { ConnectionStatus, GanCubeService, RawQuaternion } from "../bluetooth/ganCube";
 import { MoveRecord } from "../cube/types";
 import { SOLVED_FACELETS, isSolved } from "../cube/facelets";
 
@@ -11,10 +11,15 @@ export interface CubeConnectionState {
   lastMove: MoveRecord | null;
   moveHistory: MoveRecord[];
   solved: boolean;
+  /** Current gyro quaternion from the cube, updated at sensor rate (~30 Hz). Ref — no re-renders. */
+  gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
+  /** Quaternion captured when user hit "Reset Gyro". Null until first reset. */
+  gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   requestFacelets: () => Promise<void>;
   markSolved: () => Promise<void>;
+  resetGyro: () => void;
 }
 
 /**
@@ -25,6 +30,8 @@ export interface CubeConnectionState {
 export function useCubeConnection(): CubeConnectionState {
   const service = useMemo(() => new GanCubeService(), []);
   const lastMoveRef = useRef<MoveRecord | null>(null);
+  const gyroCurrentRef = useRef<RawQuaternion | null>(null);
+  const gyroResetRef = useRef<RawQuaternion | null>(null);
 
   const [status, setStatus] = useState<ConnectionStatus>({ state: "disconnected" });
   const [facelets, setFacelets] = useState<string>(SOLVED_FACELETS);
@@ -33,6 +40,9 @@ export function useCubeConnection(): CubeConnectionState {
 
   useEffect(() => {
     const s1 = service.status$.subscribe(setStatus);
+    const s3 = service.gyro$.subscribe((q) => {
+      gyroCurrentRef.current = q;
+    });
     const s2 = service.updates$.subscribe((u) => {
       if (u.facelets) setFacelets(u.facelets);
       if (u.lastMove) {
@@ -56,6 +66,7 @@ export function useCubeConnection(): CubeConnectionState {
     return () => {
       s1.unsubscribe();
       s2.unsubscribe();
+      s3.unsubscribe();
       void service.disconnect();
     };
   }, [service]);
@@ -70,5 +81,12 @@ export function useCubeConnection(): CubeConnectionState {
     disconnect: () => service.disconnect(),
     requestFacelets: () => service.requestFacelets(),
     markSolved: () => service.markSolved(),
+    gyroCurrentRef,
+    gyroResetRef,
+    resetGyro: () => {
+      if (gyroCurrentRef.current) {
+        gyroResetRef.current = { ...gyroCurrentRef.current };
+      }
+    },
   };
 }

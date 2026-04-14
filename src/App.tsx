@@ -22,6 +22,7 @@ export function App() {
           onDisconnect={cube.disconnect}
           onRequestState={cube.requestFacelets}
           onMarkSolved={cube.markSolved}
+          onResetGyro={cube.resetGyro}
         />
         <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />
         <StatusPanel status={cube.status} solved={cube.solved} />
@@ -33,7 +34,11 @@ export function App() {
       </aside>
       <main className="app__main">
         <ScrambleDisplay scramble={scramble} />
-        <CubeViewport facelets={cube.facelets} />
+        <CubeViewport
+          facelets={cube.facelets}
+          gyroCurrentRef={cube.gyroCurrentRef}
+          gyroResetRef={cube.gyroResetRef}
+        />
       </main>
     </div>
   );

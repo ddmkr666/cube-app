@@ -12,6 +12,10 @@ export type ConnectionStatus =
   | { state: "connected"; deviceName: string }
   | { state: "error"; message: string };
 
+export interface RawQuaternion {
+  x: number; y: number; z: number; w: number;
+}
+
 export interface CubeUpdate {
   facelets?: FaceletString;
   lastMove?: { move: string; serial: number; localTimestamp: number };
@@ -34,6 +38,8 @@ export class GanCubeService {
 
   readonly updates$ = new Subject<CubeUpdate>();
   readonly status$ = new Subject<ConnectionStatus>();
+  /** High-frequency gyro stream — kept separate to avoid flooding updates$. */
+  readonly gyro$ = new Subject<RawQuaternion>();
 
   async connect(): Promise<void> {
     if (this.connection) return;
@@ -111,6 +117,9 @@ export class GanCubeService {
         // Move events drive the UI, but facelets remain the source of truth —
         // request a fresh snapshot so the 3D view can't drift from reality.
         void this.requestFacelets();
+        return;
+      case "GYRO":
+        this.gyro$.next(evt.quaternion);
         return;
       case "DISCONNECT":
         this.connection = null;

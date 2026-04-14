@@ -1,16 +1,30 @@
 import { useCubeConnection } from "./hooks/useCubeConnection";
 import { useScramble } from "./hooks/useScramble";
+import { useTimer } from "./hooks/useTimer";
+import { useSolveTimes } from "./hooks/useSolveTimes";
 import { CubeViewport } from "./render/CubeViewport";
 import { ConnectPanel } from "./ui/ConnectPanel";
 import { ScramblePanel } from "./ui/ScramblePanel";
 import { ScrambleDisplay } from "./ui/ScrambleDisplay";
+import { TimerDisplay } from "./ui/TimerDisplay";
+import { HistoryPanel } from "./ui/HistoryPanel";
 import { DebugPanel } from "./ui/DebugPanel";
 import { StatusPanel } from "./ui/StatusPanel";
 
 export function App() {
   const cube = useCubeConnection();
-  const scramble = useScramble(cube.lastMove, cube.solved);
+  const scramble = useScramble(cube.lastMove);
+  const { times, addTime, clearAll, exportCSV } = useSolveTimes();
+  const timer = useTimer(scramble.state, cube.lastMove, cube.solved, addTime);
   const connected = cube.status.state === "connected";
+
+  // Show scramble sequence only while actively scrambling (not after it's done)
+  const showScramble = scramble.state === "scrambling"
+    || scramble.state === "half-turn"
+    || scramble.state === "error";
+
+  // Show timer once scramble is done, until a new scramble is started
+  const showTimer = timer.phase !== "idle";
 
   return (
     <div className="app">
@@ -26,6 +40,7 @@ export function App() {
         />
         <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />
         <StatusPanel status={cube.status} solved={cube.solved} />
+        <HistoryPanel times={times} onClear={clearAll} onExport={exportCSV} />
         <DebugPanel
           facelets={cube.facelets}
           lastMove={cube.lastMove}
@@ -33,7 +48,8 @@ export function App() {
         />
       </aside>
       <main className="app__main">
-        <ScrambleDisplay scramble={scramble} />
+        {showScramble && <ScrambleDisplay scramble={scramble} />}
+        {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
         <CubeViewport
           facelets={cube.facelets}
           gyroCurrentRef={cube.gyroCurrentRef}

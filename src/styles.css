@@ -178,3 +178,57 @@ button.secondary {
   color: var(--ok);
   font-weight: 600;
 }
+
+/* ── Timer display (above the 3D cube, replaces scramble after done) ── */
+
+.timer-display {
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+}
+
+.timer-display__waiting {
+  font-size: 18px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.timer-display__time {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 72px;
+  font-weight: 700;
+  letter-spacing: -2px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-display__time--running  { color: #ffffff; }
+.timer-display__time--finished { color: var(--ok); }
+
+/* ── Solve history list ───────────────────────────────────────────── */
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.history-row__time { font-size: 13px; }
+.history-row__time--best { color: var(--ok); }
+.history-row__date { color: var(--muted); font-size: 11px; }

@@ -21,7 +21,7 @@ function isFirstHalf(move: string, expected: string): boolean {
   return move === face || move === `${face}'`;
 }
 
-export function useScramble(lastMove: MoveRecord | null, solved: boolean): ScrambleStatus {
+export function useScramble(lastMove: MoveRecord | null): ScrambleStatus {
   const [scrambleString, setScrambleString] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [errorCorrection, setErrorCorrection] = useState<string | null>(null);
@@ -98,11 +98,6 @@ export function useScramble(lastMove: MoveRecord | null, solved: boolean): Scram
       setState("error");
     }
   }, [lastMove, state, currentIndex, moves, errorCorrection, advance]);
-
-  // Reset to idle when cube is solved after a completed scramble.
-  useEffect(() => {
-    if (solved && state === "done") setState("idle");
-  }, [solved, state]);
 
   return { state, moves, currentIndex, errorCorrection, generate, clear };
 }

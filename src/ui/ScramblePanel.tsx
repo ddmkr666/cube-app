@@ -5,13 +5,12 @@ import { MoveRecord } from "../cube/types";
 interface Props {
   solved: boolean;
   connected: boolean;
-  facelets: string;
   lastMove: MoveRecord | null;
 }
 
 type ScrambleState = "idle" | "scrambling" | "error" | "done";
 
-export function ScramblePanel({ solved, connected, facelets, lastMove }: Props) {
+export function ScramblePanel({ solved, connected, lastMove }: Props) {
   const [scrambleString, setScrambleString] = useState<string>("");
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [errorCorrection, setErrorCorrection] = useState<string | null>(null);
@@ -75,14 +74,6 @@ export function ScramblePanel({ solved, connected, facelets, lastMove }: Props) 
       }
     }
   }, [lastMove, state, currentIndex, expectedMoves, errorCorrection]);
-
-  // Reset if solved
-  useEffect(() => {
-    if (solved && state === "done") {
-      // If they solved it after finishing scramble (e.g. they solved it manually)
-      // or if they just want to reset for a new scramble
-    }
-  }, [solved, state]);
 
   if (!connected) {
     return (

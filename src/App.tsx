@@ -11,7 +11,7 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="app__header">Cube App · GAN 356 i3 · build-check-v2</header>
+      <header className="app__header">Cube App · GAN 356 i3</header>
       <aside className="app__side">
         <ConnectPanel
           status={cube.status}
@@ -23,7 +23,6 @@ export function App() {
         <ScramblePanel
           solved={cube.solved}
           connected={connected}
-          facelets={cube.facelets}
           lastMove={cube.lastMove}
         />
         <StatusPanel status={cube.status} solved={cube.solved} />

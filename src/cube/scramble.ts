@@ -1,21 +1,31 @@
 /**
- * Standard WCA-style scramble generator.
- * Produces a string of moves (e.g., "R U' F2 ...").
+ * WCA-compliant scramble generator.
+ * Rules:
+ *   1. No consecutive moves on the same face.
+ *   2. No consecutive moves on opposite faces (e.g. R then L).
+ * These are the two constraints WCA scramblers enforce for 3x3.
  */
 
 const FACES = ["U", "D", "L", "R", "F", "B"];
 const MODIFIERS = ["", "'", "2"];
+
+const OPPOSITE: Record<string, string> = {
+  U: "D", D: "U",
+  R: "L", L: "R",
+  F: "B", B: "F",
+};
 
 export function generateScramble(length: number = 20): string {
   const scramble: string[] = [];
   let lastFace = "";
 
   for (let i = 0; i < length; i++) {
-    let face: string;
-    do {
-      face = FACES[Math.floor(Math.random() * FACES.length)];
-    } while (face === lastFace);
+    // Exclude the last face and its opposite (same axis).
+    const allowed = FACES.filter(
+      (f) => f !== lastFace && f !== OPPOSITE[lastFace]
+    );
 
+    const face = allowed[Math.floor(Math.random() * allowed.length)];
     const modifier = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
     scramble.push(`${face}${modifier}`);
     lastFace = face;
@@ -34,13 +44,3 @@ export function getInverseMove(move: string): string {
   return `${move}'`;
 }
 
-/**
- * Normalizes a move string to a standard WCA format.
- * (e.g., "U3" -> "U'", "U4" -> null, etc.)
- */
-export function normalizeMove(move: string): string | null {
-  if (!move) return null;
-  // Basic normalization — you might need more if the GAN cube sends non-WCA strings
-  // But usually gan-web-bluetooth sends standard "R", "R'", "R2"
-  return move;
-}

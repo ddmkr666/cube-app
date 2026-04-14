@@ -1,11 +1,13 @@
 import { useCubeConnection } from "./hooks/useCubeConnection";
 import { CubeViewport } from "./render/CubeViewport";
 import { ConnectPanel } from "./ui/ConnectPanel";
+import { ScramblePanel } from "./ui/ScramblePanel";
 import { DebugPanel } from "./ui/DebugPanel";
 import { StatusPanel } from "./ui/StatusPanel";
 
 export function App() {
   const cube = useCubeConnection();
+  const connected = cube.status.state === "connected";
 
   return (
     <div className="app">
@@ -17,6 +19,11 @@ export function App() {
           onDisconnect={cube.disconnect}
           onRequestState={cube.requestFacelets}
           onMarkSolved={cube.markSolved}
+        />
+        <ScramblePanel
+          solved={cube.solved}
+          connected={connected}
+          facelets={cube.facelets}
         />
         <StatusPanel status={cube.status} solved={cube.solved} />
         <DebugPanel

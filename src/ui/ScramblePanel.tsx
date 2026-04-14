@@ -8,16 +8,38 @@ interface Props {
   lastMove: MoveRecord | null;
 }
 
-type ScrambleState = "idle" | "scrambling" | "error" | "done";
+type ScrambleState = "idle" | "scrambling" | "half-turn" | "error" | "done";
+
+/** Face letter without modifier, e.g. "U" from "U2" or "U'". */
+function faceOf(move: string): string {
+  return move[0];
+}
+
+/**
+ * For a "2" move the cube sends two separate quarter-turns.
+ * Accept either two CW (X X) or two CCW (X' X') — both equal a half-turn.
+ * A mixed pair (X then X') would cancel out, which is wrong.
+ */
+function isFirstHalf(move: string, expected: string): boolean {
+  if (!expected.endsWith("2")) return false;
+  const face = faceOf(expected);
+  return move === face || move === `${face}'`;
+}
+
+function isMatchingSecondHalf(move: string, firstHalf: string): boolean {
+  return move === firstHalf;
+}
 
 export function ScramblePanel({ solved, connected, lastMove }: Props) {
   const [scrambleString, setScrambleString] = useState<string>("");
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [errorCorrection, setErrorCorrection] = useState<string | null>(null);
   const [state, setState] = useState<ScrambleState>("idle");
+  // Remembers the first quarter-turn of a "2" move so we can verify the second.
+  const firstHalfRef = useRef<string>("");
 
-  const expectedMoves = useMemo(() => 
-    scrambleString ? scrambleString.split(" ") : [], 
+  const expectedMoves = useMemo(() =>
+    scrambleString ? scrambleString.split(" ") : [],
     [scrambleString]
   );
 
@@ -27,6 +49,7 @@ export function ScramblePanel({ solved, connected, lastMove }: Props) {
     setScrambleString(generateScramble(20));
     setCurrentIndex(0);
     setErrorCorrection(null);
+    firstHalfRef.current = "";
     setState("scrambling");
   }, []);
 
@@ -34,7 +57,19 @@ export function ScramblePanel({ solved, connected, lastMove }: Props) {
     setScrambleString("");
     setCurrentIndex(0);
     setErrorCorrection(null);
+    firstHalfRef.current = "";
     setState("idle");
+  }, []);
+
+  const advance = useCallback((index: number, moves: string[]) => {
+    const nextIndex = index + 1;
+    firstHalfRef.current = "";
+    if (nextIndex >= moves.length) {
+      setState("done");
+    } else {
+      setCurrentIndex(nextIndex);
+      setState("scrambling");
+    }
   }, []);
 
   // Track scramble progress based on lastMove
@@ -47,33 +82,41 @@ export function ScramblePanel({ solved, connected, lastMove }: Props) {
     const move = lastMove.move;
 
     if (state === "error") {
-      // If we're in error state, check if the move is the correction
       if (move === errorCorrection) {
         setErrorCorrection(null);
-        setState("scrambling");
+        setState(firstHalfRef.current ? "half-turn" : "scrambling");
       } else {
-        // If they did another wrong move, update correction (they need to undo this one first)
         setErrorCorrection(getInverseMove(move));
       }
       return;
     }
 
-    if (state === "scrambling") {
-      const expected = expectedMoves[currentIndex];
-      if (move === expected) {
-        const nextIndex = currentIndex + 1;
-        if (nextIndex >= expectedMoves.length) {
-          setState("done");
-        } else {
-          setCurrentIndex(nextIndex);
-        }
+    const expected = expectedMoves[currentIndex];
+
+    if (state === "half-turn") {
+      // Waiting for the second quarter-turn of a "2" move.
+      if (isMatchingSecondHalf(move, firstHalfRef.current)) {
+        advance(currentIndex, expectedMoves);
       } else {
-        // Wrong move!
+        // Wrong second move — undo it and redo the correct quarter-turn.
         setErrorCorrection(getInverseMove(move));
         setState("error");
       }
+      return;
     }
-  }, [lastMove, state, currentIndex, expectedMoves, errorCorrection]);
+
+    // state === "scrambling"
+    if (move === expected) {
+      advance(currentIndex, expectedMoves);
+    } else if (isFirstHalf(move, expected)) {
+      // Correct face, first of two quarter-turns for a "2" move.
+      firstHalfRef.current = move;
+      setState("half-turn");
+    } else {
+      setErrorCorrection(getInverseMove(move));
+      setState("error");
+    }
+  }, [lastMove, state, currentIndex, expectedMoves, errorCorrection, advance]);
 
   if (!connected) {
     return (
@@ -159,9 +202,14 @@ export function ScramblePanel({ solved, connected, lastMove }: Props) {
               </div>
             )}
 
-            {state === "scrambling" && (
+            {(state === "scrambling" || state === "half-turn") && (
               <div style={{ fontSize: 13 }}>
                 Next move: <strong style={{ color: "var(--accent)", fontSize: 16 }}>{expectedMoves[currentIndex]}</strong>
+                {state === "half-turn" && (
+                  <span style={{ color: "var(--warn)", marginLeft: 8, fontSize: 12 }}>
+                    (1/2 — turn again)
+                  </span>
+                )}
               </div>
             )}
 

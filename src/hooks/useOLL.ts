@@ -34,6 +34,7 @@ export function useOLL(
       }
       return;
     }
+
     if (isSolvedFacelets(facelets)) {
       setRecognition(null);
       if (lastAlgRef.current) {
@@ -46,12 +47,8 @@ export function useOLL(
 
     const oriented = getF2LOrientedFacelets(facelets);
     if (!oriented) {
-      setRecognition(null);
-      if (lastAlgRef.current) {
-        lastAlgRef.current = "";
-        setAlgString("");
-        setSeqId((i) => i + 1);
-      }
+      // If F2L is broken, we DON'T clear. This allows the user to follow the
+      // OLL sequence even when it temporarily breaks the bottom two layers.
       return;
     }
 

@@ -120,13 +120,45 @@ export function isSolvedFacelets(f: FaceletString): boolean {
   return true;
 }
 
-/** Find an orientation where F2L is done. Returns the remapped facelet string or null. */
-export function getF2LOrientedFacelets(f: FaceletString): FaceletString | null {
-  for (const map of ORIENTATION_MAPS) {
+/** Find an orientation where F2L is done. Returns the remapped facelet string and orientation index, or null. */
+export function getF2LOrientedFacelets(f: FaceletString): { facelets: FaceletString, orientationIndex: number } | null {
+  for (let i = 0; i < ORIENTATION_MAPS.length; i++) {
+    const map = ORIENTATION_MAPS[i];
     const remapped = remapFacelets(f, map);
-    if (isF2LDone(remapped)) return remapped;
+    if (isF2LDone(remapped)) return { facelets: remapped, orientationIndex: i };
   }
   return null;
+}
+
+/** 
+ * Maps a move from the physical cube's frame to the "F2L-oriented" frame.
+ * e.g. if the user is holding the cube such that the physical 'R' face is 'U',
+ * a physical 'R' move should be returned as 'U'.
+ */
+export function remapMove(move: string, orientationIndex: number): string {
+  const face = move[0] as any;
+  const suffix = move.slice(1);
+  
+  // Find which physical face matches each standard face in this orientation.
+  // We can look at the center facelets (index 4 of each face block).
+  const standardCenters = [4, 13, 22, 31, 40, 49]; // U, R, F, D, L, B
+  const map = ORIENTATION_MAPS[orientationIndex];
+  
+  // The facelet at standard index 4 (U center) was originally at index map[4].
+  const faceIndex = ["U", "R", "F", "D", "L", "B"].indexOf(face);
+  const physicalCenterIndex = standardCenters[faceIndex];
+  
+  // We need to find which "virtual" face the physical move corresponds to.
+  // A physical 'F' move is a rotation around the physical 'F' axis.
+  // We need to know which virtual face has its center at that physical center.
+  for (let virtualFaceIdx = 0; virtualFaceIdx < 6; virtualFaceIdx++) {
+    const targetIdx = standardCenters[virtualFaceIdx];
+    if (map[targetIdx] === physicalCenterIndex) {
+      return ["U", "R", "F", "D", "L", "B"][virtualFaceIdx] + suffix;
+    }
+  }
+  
+  return move;
 }
 
 export function readCornerOrientations(f: FaceletString): number[] {

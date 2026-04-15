@@ -179,6 +179,50 @@ button.secondary {
   font-weight: 600;
 }
 
+/* ── OLL display (above 3D cube during OLL phase) ─────────────────── */
+
+.oll-display {
+  flex-shrink: 0;
+  padding: 14px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oll-display__header {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.oll-display__meta { display: flex; flex-direction: column; gap: 2px; }
+
+.oll-display__phase {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+}
+
+.oll-display__name {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.oll-display__desc {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.oll-display__moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
 /* ── Timer display (above the 3D cube, replaces scramble after done) ── */
 
 .timer-display {

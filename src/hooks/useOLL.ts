@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FaceletString, MoveRecord } from "../cube/types";
-import { recognizeOLL, isF2LDone, isSolvedFacelets, OLLRecognition } from "../solver/oll";
+import { recognizeOLL, getF2LOrientedFacelets, isSolvedFacelets, OLLRecognition } from "../solver/oll";
 import { useMoveSequence, SequenceStatus } from "./useMoveSequence";
 
 export interface OLLStatus {
@@ -34,7 +34,7 @@ export function useOLL(
       }
       return;
     }
-    if (isSolvedFacelets(facelets) || !isF2LDone(facelets)) {
+    if (isSolvedFacelets(facelets)) {
       setRecognition(null);
       if (lastAlgRef.current) {
         lastAlgRef.current = "";
@@ -43,7 +43,19 @@ export function useOLL(
       }
       return;
     }
-    const r = recognizeOLL(facelets);
+
+    const oriented = getF2LOrientedFacelets(facelets);
+    if (!oriented) {
+      setRecognition(null);
+      if (lastAlgRef.current) {
+        lastAlgRef.current = "";
+        setAlgString("");
+        setSeqId((i) => i + 1);
+      }
+      return;
+    }
+
+    const r = recognizeOLL(oriented);
     setRecognition(r);
     const nextAlg = r.algWithAuf;
     if (nextAlg !== lastAlgRef.current) {

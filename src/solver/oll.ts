@@ -2,22 +2,72 @@
  * 2-Look OLL recognition.
  *
  * Operates on a 54-char facelet string in URFDLB order.
- *
- * Corner orientation value for a U-layer corner:
- *   0 = U sticker on top
- *   1 = U sticker on the "clockwise" neighbour face (viewing from above)
- *   2 = U sticker on the "counter-clockwise" neighbour face
- *
- * Edge orientation: 1 if the U-layer edge's U sticker is on top, else 0.
- *
- * Canonical tuples are listed in the [UBL, UBR, UFR, UFL] / [UB, UR, UF, UL]
- * order. A U turn (90° clockwise viewed from above) right-rotates the tuple.
- * To recognise a case the runtime input is right-rotated k ∈ {0,1,2,3} times;
- * the match's k is the AUF prefix required before the canonical algorithm.
  */
 import { FaceletString } from "../cube/types";
+import { FACELET_GEOMETRY } from "../cube/geometry";
 
 export type OLLPhase = "edges" | "corners" | "done";
+
+// --- Orientation remapping -----------------------------------------------------
+
+/**
+ * A remapping table for each of the 24 possible cube orientations.
+ * Each entry is an array of 54 indices: map[i] is the source index in the
+ * original facelet string that should move to index i in the remapped string.
+ */
+const ORIENTATION_MAPS: number[][] = (() => {
+  const maps: number[][] = [];
+  
+  const vecs = [[1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1]];
+  const cross = (a: number[], b: number[]) => [
+    a[1]*b[2] - a[2]*b[1],
+    a[2]*b[0] - a[0]*b[2],
+    a[0]*b[1] - a[1]*b[0]
+  ];
+  const dot = (a: number[], b: number[]) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
+
+  for (const x of vecs) {
+    for (const y of vecs) {
+      if (dot(x, y) !== 0) continue;
+      const z = cross(x, y);
+      const map = new Array(54);
+      for (let i = 0; i < 54; i++) {
+        const t = FACELET_GEOMETRY[i].pos;
+        // Inverse basis transform to find source position
+        const sx = t[0]*x[0] + t[1]*y[0] + t[2]*z[0];
+        const sy = t[0]*x[1] + t[1]*y[1] + t[2]*z[1];
+        const sz = t[0]*x[2] + t[1]*y[2] + t[2]*z[2];
+        
+        const snormal = [
+          FACELET_GEOMETRY[i].normal.axis === 'x' ? FACELET_GEOMETRY[i].normal.sign : 0,
+          FACELET_GEOMETRY[i].normal.axis === 'y' ? FACELET_GEOMETRY[i].normal.sign : 0,
+          FACELET_GEOMETRY[i].normal.axis === 'z' ? FACELET_GEOMETRY[i].normal.sign : 0,
+        ];
+        const sNX = snormal[0]*x[0] + snormal[1]*y[0] + snormal[2]*z[0];
+        const sNY = snormal[0]*x[1] + snormal[1]*y[1] + snormal[2]*z[1];
+        const sNZ = snormal[0]*x[2] + snormal[1]*y[2] + snormal[2]*z[2];
+
+        const srcIndex = FACELET_GEOMETRY.findIndex(g => 
+          g.pos[0] === sx && g.pos[1] === sy && g.pos[2] === sz &&
+          (g.normal.axis === 'x' ? g.normal.sign === sNX : 
+           g.normal.axis === 'y' ? g.normal.sign === sNY : 
+           g.normal.axis === 'z' ? g.normal.sign === sNZ : false)
+        );
+        map[i] = srcIndex;
+      }
+      maps.push(map);
+    }
+  }
+  return maps;
+})();
+
+function remapFacelets(f: FaceletString, map: number[]): FaceletString {
+  let out = "";
+  for (let i = 0; i < 54; i++) out += f[map[i]];
+  return out;
+}
+
+// -------------------------------------------------------------------------------
 
 export interface OLLCase {
   id: string;
@@ -76,6 +126,15 @@ export function isSolvedFacelets(f: FaceletString): boolean {
     for (let i = 0; i < 9; i++) if (f[face * 9 + i] !== c) return false;
   }
   return true;
+}
+
+/** Find an orientation where F2L is done. Returns the remapped facelet string or null. */
+export function getF2LOrientedFacelets(f: FaceletString): FaceletString | null {
+  for (const map of ORIENTATION_MAPS) {
+    const remapped = remapFacelets(f, map);
+    if (isF2LDone(remapped)) return remapped;
+  }
+  return null;
 }
 
 /**

@@ -19,14 +19,14 @@ function toScrambleState(s: SequenceState): ScrambleState {
   return s === "running" ? "scrambling" : s;
 }
 
-export function useScramble(lastMove: MoveRecord | null): ScrambleStatus {
+export function useScramble(moveHistory: MoveRecord[]): ScrambleStatus {
   const [scrambleString, setScrambleString] = useState("");
   const [generation, setGeneration] = useState(0);
 
   const moves = useMemo(() => (scrambleString ? scrambleString.split(" ") : []), [scrambleString]);
   const sequenceId = scrambleString ? generation : null;
 
-  const seq = useMoveSequence(moves, sequenceId, lastMove);
+  const seq = useMoveSequence(moves, sequenceId, moveHistory);
 
   const generate = useCallback(() => {
     setScrambleString(generateScramble(20));

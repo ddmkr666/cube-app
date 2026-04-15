@@ -29,69 +29,92 @@ function isFirstHalf(move: string, expected: string): boolean {
 export function useMoveSequence(
   moves: string[],
   sequenceId: string | number | null,
-  lastMove: MoveRecord | null,
+  moveHistory: MoveRecord[],
 ): SequenceStatus {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [errorCorrection, setErrorCorrection] = useState<string | null>(null);
-  const [state, setState] = useState<SequenceState>("idle");
+  const [internalState, setInternalState] = useState<{
+    idx: number;
+    err: string | null;
+    phase: SequenceState;
+    firstHalf: string;
+  }>({ idx: 0, err: null, phase: "idle", firstHalf: "" });
 
-  const firstHalfRef = useRef("");
   const prevSerialRef = useRef<number | null>(null);
   const prevIdRef = useRef<string | number | null>(null);
 
   useEffect(() => {
     if (prevIdRef.current === sequenceId) return;
     prevIdRef.current = sequenceId;
-    setCurrentIndex(0);
-    setErrorCorrection(null);
-    firstHalfRef.current = "";
-    setState(sequenceId == null || moves.length === 0 ? "idle" : "running");
-  }, [sequenceId, moves.length]);
+    setInternalState({
+      idx: 0,
+      err: null,
+      phase: sequenceId == null || moves.length === 0 ? "idle" : "running",
+      firstHalf: "",
+    });
+    // On reset, sync to whatever the latest serial is, so we only process new moves.
+    prevSerialRef.current = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1].serial : null;
+  }, [sequenceId, moves.length, moveHistory.length]);
 
   useEffect(() => {
-    if (!lastMove || lastMove.serial === prevSerialRef.current) return;
-    prevSerialRef.current = lastMove.serial;
-    if (state === "idle" || state === "done") return;
+    // Find all moves that have happened since we last checked.
+    const newMoves = prevSerialRef.current === null
+      ? moveHistory
+      : moveHistory.slice(moveHistory.findIndex(m => m.serial === prevSerialRef.current) + 1);
 
-    const move = lastMove.move;
+    if (newMoves.length === 0) return;
+    prevSerialRef.current = newMoves[newMoves.length - 1].serial;
 
-    if (state === "error") {
-      if (move === errorCorrection) {
-        setErrorCorrection(null);
-        setState(firstHalfRef.current ? "half-turn" : "running");
-      } else {
-        setErrorCorrection(getInverseMove(move));
+    setInternalState(prev => {
+      let { idx, err, phase, firstHalf } = { ...prev };
+
+      for (const m of newMoves) {
+        if (phase === "idle" || phase === "done") break;
+        const move = m.move;
+
+        if (phase === "error") {
+          if (move === err) {
+            err = null;
+            phase = firstHalf ? "half-turn" : "running";
+          } else {
+            err = getInverseMove(move);
+          }
+          continue;
+        }
+
+        const expected = moves[idx];
+
+        if (phase === "half-turn") {
+          if (move === firstHalf) {
+            firstHalf = "";
+            if (idx + 1 >= moves.length) { phase = "done"; break; }
+            else idx++;
+          } else {
+            err = getInverseMove(move);
+            phase = "error";
+          }
+          continue;
+        }
+
+        // running
+        if (move === expected) {
+          firstHalf = "";
+          if (idx + 1 >= moves.length) { phase = "done"; break; }
+          else idx++;
+        } else if (isFirstHalf(move, expected)) {
+          firstHalf = move;
+          phase = "half-turn";
+        } else {
+          err = getInverseMove(move);
+          phase = "error";
+        }
       }
-      return;
-    }
 
-    const expected = moves[currentIndex];
+      return { idx, err, phase, firstHalf };
+    });
+  }, [moveHistory, moves]);
 
-    if (state === "half-turn") {
-      if (move === firstHalfRef.current) {
-        firstHalfRef.current = "";
-        if (currentIndex + 1 >= moves.length) setState("done");
-        else setCurrentIndex(currentIndex + 1);
-      } else {
-        setErrorCorrection(getInverseMove(move));
-        setState("error");
-      }
-      return;
-    }
-
-    // running
-    if (move === expected) {
-      firstHalfRef.current = "";
-      if (currentIndex + 1 >= moves.length) setState("done");
-      else setCurrentIndex(currentIndex + 1);
-    } else if (isFirstHalf(move, expected)) {
-      firstHalfRef.current = move;
-      setState("half-turn");
-    } else {
-      setErrorCorrection(getInverseMove(move));
-      setState("error");
-    }
-  }, [lastMove, state, currentIndex, moves, errorCorrection]);
-
-  return { state, currentIndex, errorCorrection };
+  return {
+    state: internalState.phase,
+    currentIndex: internalState.idx,
+    errorCorrection: internalState.err,
+  };
 }

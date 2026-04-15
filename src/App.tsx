@@ -15,10 +15,10 @@ import { StatusPanel } from "./ui/StatusPanel";
 
 export function App() {
   const cube = useCubeConnection();
-  const scramble = useScramble(cube.lastMove);
+  const scramble = useScramble(cube.moveHistory);
   const { times, addTime, clearAll, exportCSV } = useSolveTimes();
   const timer = useTimer(scramble.state, cube.lastMove, cube.solved, addTime);
-  const oll = useOLL(cube.facelets, cube.lastMove);
+  const oll = useOLL(cube.facelets, cube.moveHistory);
   const connected = cube.status.state === "connected";
 
   // Show scramble sequence only while actively scrambling (not after it's done)

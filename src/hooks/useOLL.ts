@@ -17,7 +17,7 @@ export interface OLLStatus {
  */
 export function useOLL(
   facelets: FaceletString | null,
-  lastMove: MoveRecord | null,
+  moveHistory: MoveRecord[],
 ): OLLStatus {
   const [recognition, setRecognition] = useState<OLLRecognition | null>(null);
   const [algString, setAlgString] = useState<string>("");
@@ -67,7 +67,7 @@ export function useOLL(
     [algString],
   );
 
-  const sequence = useMoveSequence(moves, algString ? seqId : null, lastMove);
+  const sequence = useMoveSequence(moves, algString ? seqId : null, moveHistory);
 
   return {
     active: recognition !== null && recognition.phase !== "done",

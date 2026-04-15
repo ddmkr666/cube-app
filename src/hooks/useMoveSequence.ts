@@ -33,10 +33,10 @@ export function useMoveSequence(
 ): SequenceStatus {
   const [internalState, setInternalState] = useState<{
     idx: number;
-    err: string | null;
+    errorStack: string[];
     phase: SequenceState;
-    firstHalf: string;
-  }>({ idx: 0, err: null, phase: "idle", firstHalf: "" });
+    firstHalf: string | null;
+  }>({ idx: 0, errorStack: [], phase: "idle", firstHalf: null });
 
   const prevSerialRef = useRef<number | null>(null);
   const prevIdRef = useRef<string | number | null>(null);
@@ -46,16 +46,14 @@ export function useMoveSequence(
     prevIdRef.current = sequenceId;
     setInternalState({
       idx: 0,
-      err: null,
+      errorStack: [],
       phase: sequenceId == null || moves.length === 0 ? "idle" : "running",
-      firstHalf: "",
+      firstHalf: null,
     });
-    // On reset, sync to whatever the latest serial is, so we only process new moves.
     prevSerialRef.current = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1].serial : null;
   }, [sequenceId, moves.length, moveHistory.length]);
 
   useEffect(() => {
-    // Find all moves that have happened since we last checked.
     const newMoves = prevSerialRef.current === null
       ? moveHistory
       : moveHistory.slice(moveHistory.findIndex(m => m.serial === prevSerialRef.current) + 1);
@@ -64,57 +62,79 @@ export function useMoveSequence(
     prevSerialRef.current = newMoves[newMoves.length - 1].serial;
 
     setInternalState(prev => {
-      let { idx, err, phase, firstHalf } = { ...prev };
+      let { idx, errorStack, phase, firstHalf } = {
+        idx: prev.idx,
+        errorStack: [...prev.errorStack],
+        phase: prev.phase,
+        firstHalf: prev.firstHalf
+      };
 
       for (const m of newMoves) {
         if (phase === "idle" || phase === "done") break;
         const move = m.move;
 
-        if (phase === "error") {
-          if (move === err) {
-            err = null;
-            phase = firstHalf ? "half-turn" : "running";
+        // If we have an error stack, the only valid move is to undo the top of the stack.
+        if (errorStack.length > 0) {
+          const needed = errorStack[errorStack.length - 1];
+          if (move === needed) {
+            errorStack.pop();
+            if (errorStack.length === 0) {
+              phase = firstHalf ? "half-turn" : "running";
+            }
           } else {
-            err = getInverseMove(move);
+            errorStack.push(getInverseMove(move));
           }
           continue;
         }
 
         const expected = moves[idx];
 
-        if (phase === "half-turn") {
+        if (phase === "half-turn" && firstHalf) {
           if (move === firstHalf) {
-            firstHalf = "";
+            // Completed the double turn (e.g., U then U for U2)
+            firstHalf = null;
             if (idx + 1 >= moves.length) { phase = "done"; break; }
-            else idx++;
+            else { idx++; phase = "running"; }
+          } else if (move === getInverseMove(firstHalf)) {
+            // Undid the first half (e.g., U then U')
+            firstHalf = null;
+            phase = "running";
           } else {
-            err = getInverseMove(move);
+            // Wrong second move
+            errorStack.push(getInverseMove(move));
             phase = "error";
           }
           continue;
         }
 
-        // running
+        // Standard "running" phase
         if (move === expected) {
-          firstHalf = "";
           if (idx + 1 >= moves.length) { phase = "done"; break; }
           else idx++;
         } else if (isFirstHalf(move, expected)) {
           firstHalf = move;
           phase = "half-turn";
+        } else if (move === getInverseMove(moves[idx - 1])) {
+           // User undid the PREVIOUS move? 
+           // We'll treat this as a generic error to keep it simple, 
+           // but they must now "undo the undo" (redo it) or we'd get very out of sync.
+           errorStack.push(getInverseMove(move));
+           phase = "error";
         } else {
-          err = getInverseMove(move);
+          errorStack.push(getInverseMove(move));
           phase = "error";
         }
       }
 
-      return { idx, err, phase, firstHalf };
+      return { idx, errorStack, phase, firstHalf };
     });
   }, [moveHistory, moves]);
 
   return {
     state: internalState.phase,
     currentIndex: internalState.idx,
-    errorCorrection: internalState.err,
+    errorCorrection: internalState.errorStack.length > 0 
+      ? internalState.errorStack[internalState.errorStack.length - 1] 
+      : null,
   };
 }

@@ -73,6 +73,11 @@ export interface OLLCase {
   alg: string;             // canonical face-turn algorithm (no wide/rotation moves)
   /** Short human description of the visible pattern on top. */
   description: string;
+  /**
+   * Additional U rotations to reach the teaching/display orientation used by
+   * the reference algorithm sheet.
+   */
+  orientationOffset?: number;
 }
 
 export interface OLLRecognition {
@@ -151,8 +156,12 @@ export function getAllF2LOrientedFacelets(
  * a physical 'R' move should be returned as 'U'.
  */
 export function remapMove(move: string, orientationIndex: number): string {
-  const face = move[0] as any;
+  const face = move[0];
   const suffix = move.slice(1);
+  const upperFace = face.toUpperCase();
+  const preserveCase = (nextFace: string) => (
+    face === upperFace ? nextFace : nextFace.toLowerCase()
+  );
   
   // Find which physical face matches each standard face in this orientation.
   // We can look at the center facelets (index 4 of each face block).
@@ -160,7 +169,8 @@ export function remapMove(move: string, orientationIndex: number): string {
   const map = ORIENTATION_MAPS[orientationIndex];
   
   // The facelet at standard index 4 (U center) was originally at index map[4].
-  const faceIndex = ["U", "R", "F", "D", "L", "B"].indexOf(face);
+  const faceIndex = ["U", "R", "F", "D", "L", "B"].indexOf(upperFace);
+  if (faceIndex === -1) return move;
   const physicalCenterIndex = standardCenters[faceIndex];
   
   // We need to find which "virtual" face the physical move corresponds to.
@@ -169,7 +179,7 @@ export function remapMove(move: string, orientationIndex: number): string {
   for (let virtualFaceIdx = 0; virtualFaceIdx < 6; virtualFaceIdx++) {
     const targetIdx = standardCenters[virtualFaceIdx];
     if (map[targetIdx] === physicalCenterIndex) {
-      return ["U", "R", "F", "D", "L", "B"][virtualFaceIdx] + suffix;
+      return preserveCase(["U", "R", "F", "D", "L", "B"][virtualFaceIdx]) + suffix;
     }
   }
   
@@ -179,8 +189,13 @@ export function remapMove(move: string, orientationIndex: number): string {
 export function rotateMoveByAuf(move: string, auf: string): string {
   const face = move[0];
   const suffix = move.slice(1);
+  const upperFace = face.toUpperCase();
 
-  const remap = (map: Record<string, string>) => `${map[face] ?? face}${suffix}`;
+  const remap = (map: Record<string, string>) => {
+    const mapped = map[upperFace] ?? upperFace;
+    const nextFace = face === upperFace ? mapped : mapped.toLowerCase();
+    return `${nextFace}${suffix}`;
+  };
 
   switch (auf) {
     case "U":
@@ -227,19 +242,19 @@ interface EdgeCaseDef extends OLLCase { tuple: number[] }
 interface CornerCaseDef extends OLLCase { tuple: number[] }
 
 const EDGE_CASES: EdgeCaseDef[] = [
-  { id: "dot", name: "Dot", phase: "edges", alg: "F R U R' U' F'", description: "No yellow edges on top", tuple: [0, 0, 0, 0] },
-  { id: "line", name: "Line", phase: "edges", alg: "F R U R' U' F'", description: "Yellow line across the top (left-right)", tuple: [1, 0, 1, 0] },
-  { id: "lshape", name: "L-Shape", phase: "edges", alg: "F U R U' R' F'", description: "Two adjacent yellow edges (forming an L at back-left)", tuple: [1, 0, 0, 1] },
+  { id: "dot", name: "Dot", phase: "edges", alg: "F R U R' U' F'", description: "No yellow edges on top", tuple: [0, 0, 0, 0], orientationOffset: 0 },
+  { id: "line", name: "Line", phase: "edges", alg: "F R U R' U' F'", description: "Yellow line across the top (left-right)", tuple: [1, 0, 1, 0], orientationOffset: 1 },
+  { id: "lshape", name: "L-Shape", phase: "edges", alg: "f R U R' U' f'", description: "Two adjacent yellow edges forming an L in the bottom-right", tuple: [1, 0, 0, 1], orientationOffset: 2 },
 ];
 
 const CORNER_CASES: CornerCaseDef[] = [
-  { id: "sune", name: "Sune", phase: "corners", alg: "R U R' U R U2 R'", description: "Oriented corner at back-left, three others twisted clockwise", tuple: [0, 1, 1, 1] },
-  { id: "antisune", name: "Anti-Sune", phase: "corners", alg: "R U2 R' U' R U' R'", description: "Oriented corner at back-left, three others twisted counter-clockwise", tuple: [0, 2, 2, 2] },
-  { id: "h", name: "H (Double-Sune)", phase: "corners", alg: "R U R' U R U' R' U R U2 R'", description: "No corners oriented; headlights on left and right", tuple: [1, 2, 1, 2] },
-  { id: "pi", name: "Pi (Bruno)", phase: "corners", alg: "R U2 R2 U' R2 U' R2 U2 R", description: "No corners oriented; headlights on front and back", tuple: [1, 1, 2, 2] },
-  { id: "u", name: "U (Headlights)", phase: "corners", alg: "R2 D R' U2 R D' R' U2 R'", description: "Back corners oriented, headlights on the front", tuple: [0, 0, 2, 1] },
-  { id: "t", name: "T", phase: "corners", alg: "R U R' U' R' F R F'", description: "Back corners oriented, front corners side-facing", tuple: [0, 0, 1, 2] },
-  { id: "l", name: "L (Diagonal)", phase: "corners", alg: "F R U R' U' R U R' U' F'", description: "Two diagonally-opposite corners oriented", tuple: [0, 1, 0, 2] },
+  { id: "sune", name: "Sune", phase: "corners", alg: "R U R' U R U2 R'", description: "Oriented corner at back-left, three others twisted clockwise", tuple: [0, 2, 2, 2], orientationOffset: 0 },
+  { id: "antisune", name: "Anti-Sune", phase: "corners", alg: "R U2 R' U' R U' R'", description: "Oriented corner at back-left, three others twisted counter-clockwise", tuple: [0, 1, 1, 1], orientationOffset: 0 },
+  { id: "h", name: "H (Double-Sune)", phase: "corners", alg: "R U R' U R U' R' U R U2 R'", description: "No corners oriented; headlights on left and right", tuple: [1, 2, 1, 2], orientationOffset: 0 },
+  { id: "pi", name: "Pi (Bruno)", phase: "corners", alg: "R U2 R2 U' R2 U' R2 U2 R", description: "No corners oriented; headlights on front and back", tuple: [2, 1, 2, 1], orientationOffset: 0 },
+  { id: "u", name: "U (Headlights)", phase: "corners", alg: "R2 D R' U2 R D' R' U2 R'", description: "Back corners oriented, headlights on the front", tuple: [0, 0, 2, 1], orientationOffset: 0 },
+  { id: "t", name: "T", phase: "corners", alg: "R U R' U' R' F R F'", description: "Two unmatched yellow corners on the left", tuple: [0, 0, 1, 2], orientationOffset: 3 },
+  { id: "l", name: "L (Diagonal)", phase: "corners", alg: "F R U R' U' R U R' U' F'", description: "Two diagonally-opposite corners oriented", tuple: [0, 1, 0, 2], orientationOffset: 0 },
 ];
 
 // --- Matching ----------------------------------------------------------------
@@ -258,6 +273,14 @@ function tuplesEqual(a: number[], b: number[]): boolean {
 }
 
 const AUF_MOVES = ["", "U", "U2", "U'"];
+
+function normalizeAufIndex(idx: number): number {
+  return ((idx % 4) + 4) % 4;
+}
+
+function displayTuple(tuple: number[], orientationOffset: number = 0): number[] {
+  return rotRight(tuple, normalizeAufIndex(orientationOffset));
+}
 
 function findMatch<T extends { tuple: number[] }>(cases: T[], input: number[]): { cse: T; auf: string } | null {
   for (let k = 0; k < 4; k++) {
@@ -283,22 +306,24 @@ export function recognizeOLL(facelets: FaceletString): OLLRecognition {
   if (!edgesDone) {
     const m = findMatch(EDGE_CASES, edgeState);
     if (!m) return { phase: "edges", auf: "", algWithAuf: "", targetCornerState: cornerState, targetEdgeState: edgeState };
-    const aufIdx = AUF_MOVES.indexOf(m.auf);
+    const displayOffset = m.cse.orientationOffset ?? 0;
+    const aufIdx = normalizeAufIndex(AUF_MOVES.indexOf(m.auf) + displayOffset);
     return {
-      phase: "edges", case: m.cse, auf: m.auf, 
-      algWithAuf: m.auf ? `${m.auf} ${m.cse.alg}` : m.cse.alg,
-      targetCornerState: rotRight(cornerState, aufIdx),
-      targetEdgeState: rotRight(edgeState, aufIdx)
+      phase: "edges", case: m.cse, auf: AUF_MOVES[aufIdx], 
+      algWithAuf: AUF_MOVES[aufIdx] ? `${AUF_MOVES[aufIdx]} ${m.cse.alg}` : m.cse.alg,
+      targetCornerState: [1, 1, 1, 1],
+      targetEdgeState: displayTuple(m.cse.tuple, displayOffset),
     };
   }
 
   const m = findMatch(CORNER_CASES, cornerState);
   if (!m) return { phase: "corners", auf: "", algWithAuf: "", targetCornerState: cornerState, targetEdgeState: edgeState };
-  const aufIdx = AUF_MOVES.indexOf(m.auf);
+  const displayOffset = m.cse.orientationOffset ?? 0;
+  const aufIdx = normalizeAufIndex(AUF_MOVES.indexOf(m.auf) + displayOffset);
   return {
-    phase: "corners", case: m.cse, auf: m.auf,
-    algWithAuf: m.auf ? `${m.auf} ${m.cse.alg}` : m.cse.alg,
-    targetCornerState: rotRight(cornerState, aufIdx),
-    targetEdgeState: rotRight(edgeState, aufIdx)
+    phase: "corners", case: m.cse, auf: AUF_MOVES[aufIdx],
+    algWithAuf: AUF_MOVES[aufIdx] ? `${AUF_MOVES[aufIdx]} ${m.cse.alg}` : m.cse.alg,
+    targetCornerState: displayTuple(m.cse.tuple, displayOffset),
+    targetEdgeState: [1, 1, 1, 1],
   };
 }

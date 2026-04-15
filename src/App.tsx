@@ -3,11 +3,13 @@ import { useScramble } from "./hooks/useScramble";
 import { useTimer } from "./hooks/useTimer";
 import { useSolveTimes } from "./hooks/useSolveTimes";
 import { useOLL } from "./hooks/useOLL";
+import { usePLL } from "./hooks/usePLL";
 import { CubeViewport } from "./render/CubeViewport";
 import { ConnectPanel } from "./ui/ConnectPanel";
 import { ScramblePanel } from "./ui/ScramblePanel";
 import { ScrambleDisplay } from "./ui/ScrambleDisplay";
 import { OLLDisplay } from "./ui/OLLDisplay";
+import { PLLDisplay } from "./ui/PLLDisplay";
 import { TimerDisplay } from "./ui/TimerDisplay";
 import { HistoryPanel } from "./ui/HistoryPanel";
 import { DebugPanel } from "./ui/DebugPanel";
@@ -19,6 +21,7 @@ export function App() {
   const { times, addTime, clearAll, exportCSV } = useSolveTimes();
   const timer = useTimer(scramble.state, cube.lastMove, cube.solved, addTime);
   const oll = useOLL(cube.facelets, cube.moveHistory);
+  const pll = usePLL(cube.facelets, cube.moveHistory);
   const connected = cube.status.state === "connected";
 
   // Show scramble sequence only while actively scrambling (not after it's done)
@@ -53,6 +56,7 @@ export function App() {
       <main className="app__main">
         {showScramble && <ScrambleDisplay scramble={scramble} />}
         {!showScramble && oll.active && <OLLDisplay oll={oll} />}
+        {!showScramble && !oll.active && pll.active && <PLLDisplay pll={pll} />}
         {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
         <CubeViewport
           facelets={cube.facelets}

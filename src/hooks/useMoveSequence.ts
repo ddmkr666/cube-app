@@ -10,12 +10,36 @@ export interface SequenceStatus {
   errorCorrection: string | null;
 }
 
+interface UseMoveSequenceOptions {
+  /**
+   * While still waiting for the first tracked move, ignore turns on these faces.
+   * Useful when the user may do a free alignment step before the algorithm starts.
+   */
+  ignoreLeadingFaces?: string[];
+}
+
 function faceOf(move: string): string { return move[0]; }
+
+function moveSuffix(move: string): string { return move.slice(1); }
+
+function isWideNotation(move: string): boolean {
+  const face = faceOf(move);
+  return face !== face.toUpperCase();
+}
+
+function matchesExpectedMove(actual: string, expected: string): boolean {
+  if (actual === expected) return true;
+
+  if (!isWideNotation(expected)) return false;
+
+  return faceOf(actual).toUpperCase() === faceOf(expected).toUpperCase()
+    && moveSuffix(actual) === moveSuffix(expected);
+}
 
 function isFirstHalf(move: string, expected: string): boolean {
   if (!expected.endsWith("2")) return false;
-  const face = faceOf(expected);
-  return move === face || move === `${face}'`;
+  return matchesExpectedMove(move, faceOf(expected))
+    || matchesExpectedMove(move, `${faceOf(expected)}'`);
 }
 
 /**
@@ -30,7 +54,9 @@ export function useMoveSequence(
   moves: string[],
   sequenceId: string | number | null,
   moveHistory: MoveRecord[],
+  options: UseMoveSequenceOptions = {},
 ): SequenceStatus {
+  const ignoreLeadingFaces = options.ignoreLeadingFaces ?? [];
   const [internalState, setInternalState] = useState<{
     idx: number;
     errorStack: string[];
@@ -76,7 +102,7 @@ export function useMoveSequence(
         // If we have an error stack, the only valid move is to undo the top of the stack.
         if (errorStack.length > 0) {
           const needed = errorStack[errorStack.length - 1];
-          if (move === needed) {
+          if (matchesExpectedMove(move, needed)) {
             errorStack.pop();
             if (errorStack.length === 0) {
               phase = firstHalf ? "half-turn" : "running";
@@ -89,13 +115,22 @@ export function useMoveSequence(
 
         const expected = moves[idx];
 
+        if (
+          idx === 0
+          && errorStack.length === 0
+          && phase === "running"
+          && ignoreLeadingFaces.includes(faceOf(move))
+        ) {
+          continue;
+        }
+
         if (phase === "half-turn" && firstHalf) {
-          if (move === firstHalf) {
+          if (matchesExpectedMove(move, firstHalf)) {
             // Completed the double turn (e.g., U then U for U2)
             firstHalf = null;
             if (idx + 1 >= moves.length) { phase = "done"; break; }
             else { idx++; phase = "running"; }
-          } else if (move === getInverseMove(firstHalf)) {
+          } else if (matchesExpectedMove(move, getInverseMove(firstHalf))) {
             // Undid the first half (e.g., U then U')
             firstHalf = null;
             phase = "running";
@@ -108,13 +143,13 @@ export function useMoveSequence(
         }
 
         // Standard "running" phase
-        if (move === expected) {
+        if (matchesExpectedMove(move, expected)) {
           if (idx + 1 >= moves.length) { phase = "done"; break; }
           else idx++;
         } else if (isFirstHalf(move, expected)) {
           firstHalf = move;
           phase = "half-turn";
-        } else if (move === getInverseMove(moves[idx - 1])) {
+        } else if (idx > 0 && matchesExpectedMove(move, getInverseMove(moves[idx - 1]))) {
            // User undid the PREVIOUS move? 
            // We'll treat this as a generic error to keep it simple, 
            // but they must now "undo the undo" (redo it) or we'd get very out of sync.
@@ -128,7 +163,7 @@ export function useMoveSequence(
 
       return { idx, errorStack, phase, firstHalf };
     });
-  }, [moveHistory, moves]);
+  }, [moveHistory, moves, ignoreLeadingFaces]);
 
   return {
     state: internalState.phase,

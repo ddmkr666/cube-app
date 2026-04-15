@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FaceletString, MoveRecord } from "../cube/types";
-import { recognizeOLL, getAllF2LOrientedFacelets, isSolvedFacelets, OLLRecognition, remapMove, rotateMoveByAuf } from "../solver/oll";
-import { useMoveSequence, SequenceStatus } from "./useMoveSequence";
+import { getAllF2LOrientedFacelets, isSolvedFacelets, remapMove, rotateMoveByAuf } from "../solver/oll";
+import { PLLRecognition, recognizePLL } from "../solver/pll";
+import { SequenceStatus, useMoveSequence } from "./useMoveSequence";
 
-export interface OLLStatus {
+export interface PLLStatus {
   active: boolean;
-  recognition: OLLRecognition | null;
+  recognition: PLLRecognition | null;
   moves: string[];
   sequence: SequenceStatus;
   trackable: boolean;
@@ -25,29 +26,20 @@ function aufRank(auf: string): number {
   }
 }
 
-/**
- * Detects when the cube has F2L solved and runs OLL recognition on the remaining
- * U layer. Whenever the recognised algorithm changes (including AUF prefix), the
- * tracked sequence resets so the user follows the newly-displayed alg from move 0.
- */
-export function useOLL(
+export function usePLL(
   facelets: FaceletString | null,
   moveHistory: MoveRecord[],
-): OLLStatus {
-  const [recognition, setRecognition] = useState<OLLRecognition | null>(null);
+): PLLStatus {
+  const [recognition, setRecognition] = useState<PLLRecognition | null>(null);
   const [algString, setAlgString] = useState<string>("");
   const [seqId, setSeqId] = useState<number>(0);
   const lastSequenceKeyRef = useRef<string>("");
   const [orientationIndex, setOrientationIndex] = useState<number | null>(null);
-  const lockedTopColorRef = useRef<string | null>(null);
-  const lockedBottomColorRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!facelets) {
       setRecognition(null);
       setOrientationIndex(null);
-      lockedTopColorRef.current = null;
-      lockedBottomColorRef.current = null;
       if (lastSequenceKeyRef.current) {
         lastSequenceKeyRef.current = "";
         setAlgString("");
@@ -59,8 +51,6 @@ export function useOLL(
     if (isSolvedFacelets(facelets)) {
       setRecognition(null);
       setOrientationIndex(null);
-      lockedTopColorRef.current = null;
-      lockedBottomColorRef.current = null;
       if (lastSequenceKeyRef.current) {
         lastSequenceKeyRef.current = "";
         setAlgString("");
@@ -70,32 +60,17 @@ export function useOLL(
     }
 
     const orientedCandidates = getAllF2LOrientedFacelets(facelets);
-    if (orientedCandidates.length === 0) {
-      // If F2L is broken, we DON'T clear. This allows the user to follow the
-      // OLL sequence even when it temporarily breaks the bottom two layers.
-      return;
-    }
+    if (orientedCandidates.length === 0) return;
 
-    const filteredCandidates = orientedCandidates.filter((candidate) => {
-      const topColor = candidate.facelets[4];
-      const bottomColor = candidate.facelets[31];
-
-      if (lockedTopColorRef.current && topColor !== lockedTopColorRef.current) return false;
-      if (lockedBottomColorRef.current && bottomColor !== lockedBottomColorRef.current) return false;
-      return true;
-    });
-
-    const candidates = filteredCandidates.length > 0 ? filteredCandidates : orientedCandidates;
-
-    const best = candidates
+    const best = orientedCandidates
       .map((candidate) => ({
         candidate,
-        recognition: recognizeOLL(candidate.facelets),
+        recognition: recognizePLL(candidate.facelets),
       }))
       .sort((a, b) => {
-        const aRank = a.recognition.phase === "done" ? 0 : a.recognition.case ? 1 : 2;
-        const bRank = b.recognition.phase === "done" ? 0 : b.recognition.case ? 1 : 2;
-        if (aRank !== bRank) return aRank - bRank;
+        const aCase = a.recognition.case ? 0 : 1;
+        const bCase = b.recognition.case ? 0 : 1;
+        if (aCase !== bCase) return aCase - bCase;
 
         const aAuf = aufRank(a.recognition.auf);
         const bAuf = aufRank(b.recognition.auf);
@@ -105,15 +80,9 @@ export function useOLL(
       })[0];
 
     const r = best.recognition;
-    if (!r.case && r.phase !== "done") {
-      return;
-    }
-
     setRecognition(r);
     setOrientationIndex(best.candidate.orientationIndex);
-    lockedTopColorRef.current = best.candidate.facelets[4];
-    lockedBottomColorRef.current = best.candidate.facelets[31];
-    
+
     const nextSequenceKey = r.case ? `${r.case.id}:${r.auf}` : "";
     if (nextSequenceKey !== lastSequenceKeyRef.current) {
       lastSequenceKeyRef.current = nextSequenceKey;
@@ -128,16 +97,15 @@ export function useOLL(
   );
 
   const trackable = useMemo(
-    () => moves.every((move) => !/^[rludfbMESxyz]/.test(move)),
+    () => moves.every((move) => !/^[MESxyz]/i.test(move)),
     [moves],
   );
 
-  // Remap moves from the physical cube to the virtual "F2L-oriented" frame.
   const remappedHistory = useMemo(() => {
     if (orientationIndex === null) return moveHistory;
-    return moveHistory.map(m => ({
+    return moveHistory.map((m) => ({
       ...m,
-      move: rotateMoveByAuf(remapMove(m.move, orientationIndex), recognition?.auf ?? "")
+      move: rotateMoveByAuf(remapMove(m.move, orientationIndex), recognition?.auf ?? ""),
     }));
   }, [moveHistory, orientationIndex, recognition?.auf]);
 

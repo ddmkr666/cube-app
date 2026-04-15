@@ -6,6 +6,48 @@ import {
 } from "gan-web-bluetooth";
 import { FaceletString } from "../cube/types";
 
+const MAC_STORAGE_PREFIX = "cube-app:gan-mac:";
+
+function normalizeMacAddress(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const hex = value.replace(/[^a-fA-F0-9]/g, "").toUpperCase();
+  if (hex.length !== 12) return null;
+
+  const parts = hex.match(/.{1,2}/g);
+  return parts ? parts.join(":") : null;
+}
+
+function macStorageKey(device: BluetoothDevice): string {
+  return `${MAC_STORAGE_PREFIX}${device.id}`;
+}
+
+async function getCubeMacAddress(
+  device: BluetoothDevice,
+  isFallbackCall?: boolean,
+): Promise<string | null> {
+  const storageKey = macStorageKey(device);
+  const cached = normalizeMacAddress(localStorage.getItem(storageKey));
+  if (cached) return cached;
+
+  if (!isFallbackCall) return null;
+
+  const entered = window.prompt(
+    [
+      `Chrome couldn't auto-detect the MAC address for ${device.name ?? "this GAN cube"}.`,
+      "Enter the cube MAC address (for example AB:12:34:5D:34:12).",
+      "Tip: In Chrome on Windows, open chrome://bluetooth-internals/#devices and scan for the cube.",
+    ].join("\n"),
+  );
+
+  const normalized = normalizeMacAddress(entered);
+  if (normalized) {
+    localStorage.setItem(storageKey, normalized);
+    return normalized;
+  }
+
+  return null;
+}
+
 export type ConnectionStatus =
   | { state: "disconnected" }
   | { state: "connecting" }
@@ -45,7 +87,7 @@ export class GanCubeService {
     if (this.connection) return;
     this.status$.next({ state: "connecting" });
     try {
-      const conn = await connectGanCube();
+      const conn = await connectGanCube(getCubeMacAddress);
       this.connection = conn;
 
       this.sub = conn.events$.subscribe((evt: GanCubeEvent) => {

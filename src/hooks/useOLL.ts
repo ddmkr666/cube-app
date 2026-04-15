@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FaceletString, MoveRecord } from "../cube/types";
-import { recognizeOLL, getF2LOrientedFacelets, isSolvedFacelets, OLLRecognition, remapMove } from "../solver/oll";
+import { recognizeOLL, getAllF2LOrientedFacelets, isSolvedFacelets, OLLRecognition, remapMove, rotateMoveByAuf } from "../solver/oll";
 import { useMoveSequence, SequenceStatus } from "./useMoveSequence";
 
 export interface OLLStatus {
@@ -8,6 +8,20 @@ export interface OLLStatus {
   recognition: OLLRecognition | null;
   moves: string[];
   sequence: SequenceStatus;
+}
+
+function aufRank(auf: string): number {
+  switch (auf) {
+    case "":
+      return 0;
+    case "U":
+    case "U'":
+      return 1;
+    case "U2":
+      return 2;
+    default:
+      return 3;
+  }
 }
 
 /**
@@ -22,15 +36,15 @@ export function useOLL(
   const [recognition, setRecognition] = useState<OLLRecognition | null>(null);
   const [algString, setAlgString] = useState<string>("");
   const [seqId, setSeqId] = useState<number>(0);
-  const lastAlgRef = useRef<string>("");
+  const lastSequenceKeyRef = useRef<string>("");
   const [orientationIndex, setOrientationIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!facelets) {
       setRecognition(null);
       setOrientationIndex(null);
-      if (lastAlgRef.current) {
-        lastAlgRef.current = "";
+      if (lastSequenceKeyRef.current) {
+        lastSequenceKeyRef.current = "";
         setAlgString("");
         setSeqId((i) => i + 1);
       }
@@ -40,29 +54,46 @@ export function useOLL(
     if (isSolvedFacelets(facelets)) {
       setRecognition(null);
       setOrientationIndex(null);
-      if (lastAlgRef.current) {
-        lastAlgRef.current = "";
+      if (lastSequenceKeyRef.current) {
+        lastSequenceKeyRef.current = "";
         setAlgString("");
         setSeqId((i) => i + 1);
       }
       return;
     }
 
-    const oriented = getF2LOrientedFacelets(facelets);
-    if (!oriented) {
+    const orientedCandidates = getAllF2LOrientedFacelets(facelets);
+    if (orientedCandidates.length === 0) {
       // If F2L is broken, we DON'T clear. This allows the user to follow the
       // OLL sequence even when it temporarily breaks the bottom two layers.
       return;
     }
 
-    const r = recognizeOLL(oriented.facelets);
+    const best = orientedCandidates
+      .map((candidate) => ({
+        candidate,
+        recognition: recognizeOLL(candidate.facelets),
+      }))
+      .sort((a, b) => {
+        const aCase = a.recognition.case ? 0 : 1;
+        const bCase = b.recognition.case ? 0 : 1;
+        if (aCase !== bCase) return aCase - bCase;
+
+        const aAuf = aufRank(a.recognition.auf);
+        const bAuf = aufRank(b.recognition.auf);
+        if (aAuf !== bAuf) return aAuf - bAuf;
+
+        return a.candidate.orientationIndex - b.candidate.orientationIndex;
+      })[0];
+
+    const r = best.recognition;
     setRecognition(r);
-    setOrientationIndex(oriented.orientationIndex);
+    setOrientationIndex(best.candidate.orientationIndex);
     
-    const nextAlg = r.algWithAuf;
-    if (nextAlg !== lastAlgRef.current) {
-      lastAlgRef.current = nextAlg;
-      setAlgString(nextAlg);
+    const nextSequenceKey = r.case ? `${r.case.id}:${r.auf}` : "";
+    if (nextSequenceKey !== lastSequenceKeyRef.current) {
+      lastSequenceKeyRef.current = nextSequenceKey;
+      setAlgString(r.case?.alg ?? "");
       setSeqId((i) => i + 1);
     }
   }, [facelets]);
@@ -77,9 +108,9 @@ export function useOLL(
     if (orientationIndex === null) return moveHistory;
     return moveHistory.map(m => ({
       ...m,
-      move: remapMove(m.move, orientationIndex)
+      move: rotateMoveByAuf(remapMove(m.move, orientationIndex), recognition?.auf ?? "")
     }));
-  }, [moveHistory, orientationIndex]);
+  }, [moveHistory, orientationIndex, recognition?.auf]);
 
   const sequence = useMoveSequence(moves, algString ? seqId : null, remappedHistory);
 

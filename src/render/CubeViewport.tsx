@@ -54,7 +54,7 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProp
     if (gyroResetRef.current) {
       _ref.copy(ganToThree(gyroResetRef.current));
       // delta = current * ref⁻¹  →  rotation from reset-position to now
-      _target.copy(_current).multiply(_ref.clone().invert());
+      _target.copy(_ref).invert().multiply(_current);
     } else {
       _target.copy(_current);
     }

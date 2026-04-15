@@ -130,6 +130,21 @@ export function getF2LOrientedFacelets(f: FaceletString): { facelets: FaceletStr
   return null;
 }
 
+/** All orientations where F2L is done. Multiple U rotations may qualify at once. */
+export function getAllF2LOrientedFacelets(
+  f: FaceletString,
+): { facelets: FaceletString; orientationIndex: number }[] {
+  const matches: { facelets: FaceletString; orientationIndex: number }[] = [];
+  for (let i = 0; i < ORIENTATION_MAPS.length; i++) {
+    const map = ORIENTATION_MAPS[i];
+    const remapped = remapFacelets(f, map);
+    if (isF2LDone(remapped)) {
+      matches.push({ facelets: remapped, orientationIndex: i });
+    }
+  }
+  return matches;
+}
+
 /** 
  * Maps a move from the physical cube's frame to the "F2L-oriented" frame.
  * e.g. if the user is holding the cube such that the physical 'R' face is 'U',
@@ -159,6 +174,25 @@ export function remapMove(move: string, orientationIndex: number): string {
   }
   
   return move;
+}
+
+export function rotateMoveByAuf(move: string, auf: string): string {
+  const face = move[0];
+  const suffix = move.slice(1);
+
+  const remap = (map: Record<string, string>) => `${map[face] ?? face}${suffix}`;
+
+  switch (auf) {
+    case "U":
+      // Treat AUF as a view rotation: U on the state equals y' in the viewer frame.
+      return remap({ F: "L", R: "F", B: "R", L: "B" });
+    case "U'":
+      return remap({ F: "R", R: "B", B: "L", L: "F" });
+    case "U2":
+      return remap({ F: "B", R: "L", B: "F", L: "R" });
+    default:
+      return move;
+  }
 }
 
 export function readCornerOrientations(f: FaceletString): number[] {

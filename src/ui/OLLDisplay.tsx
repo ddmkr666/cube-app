@@ -48,6 +48,12 @@ export function OLLDisplay({ oll }: Props) {
         })}
       </div>
 
+      {recognition.auf && (
+        <div className="scramble-display__hint">
+          Align the top like the diagram first ({recognition.auf}), then start the algorithm.
+        </div>
+      )}
+
       {state === "error" && errorCorrection && (
         <div className="scramble-display__correction">
           Wrong move — do <strong>{errorCorrection}</strong> to get back on track

@@ -1,10 +1,9 @@
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { Cube3D } from "./Cube3D";
 import { RawQuaternion } from "../bluetooth/ganCube";
-import { getF2LOrientedFacelets } from "../solver/oll";
 
 interface CubeViewportProps {
   facelets: string;
@@ -47,13 +46,6 @@ interface GyroRotatorProps {
 function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProps) {
   const groupRef = useRef<THREE.Group>(null);
 
-  // During OLL, we might want to see the cube in the orientation that the
-  // OLL solver found (where yellow is top).
-  const displayFacelets = useMemo(() => {
-    const oriented = getF2LOrientedFacelets(facelets);
-    return oriented ? oriented.facelets : facelets;
-  }, [facelets]);
-
   useFrame(() => {
     if (!groupRef.current || !gyroCurrentRef.current) return;
 
@@ -73,7 +65,7 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProp
 
   return (
     <group ref={groupRef}>
-      <Cube3D facelets={displayFacelets} />
+      <Cube3D facelets={facelets} />
     </group>
   );
 }

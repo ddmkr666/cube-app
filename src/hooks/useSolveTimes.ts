@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export interface SolveRecord {
   id: string;
@@ -10,7 +10,8 @@ const STORAGE_KEY = "cube-app:solve-times";
 
 function load(): SolveRecord[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
@@ -21,7 +22,18 @@ function save(records: SolveRecord[]): void {
 }
 
 export function useSolveTimes() {
-  const [times, setTimes] = useState<SolveRecord[]>(load);
+  const [times, setTimes] = useState<SolveRecord[]>([]);
+
+  // Load on mount and listen for changes from other tabs
+  useEffect(() => {
+    setTimes(load());
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) setTimes(load());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const addTime = useCallback((elapsed: number): SolveRecord => {
     const record: SolveRecord = {

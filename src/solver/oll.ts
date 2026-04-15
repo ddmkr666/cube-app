@@ -54,15 +54,16 @@ const B = (i: number) => 45 + i;
 /** True when D face + bottom two rows of F/R/B/L are solved (only U layer remains). */
 export function isF2LDone(f: FaceletString): boolean {
   if (f.length !== 54) return false;
-  // D face all D
-  for (let i = 0; i < 9; i++) if (f[D(i)] !== "D") return false;
+  // D face all match D center
+  const dCenter = f[D(4)];
+  for (let i = 0; i < 9; i++) if (f[D(i)] !== dCenter) return false;
+
   // Bottom two rows (indices 3..8) of each side must match its center (index 4).
-  const sides: Array<[(i: number) => number, string]> = [
-    [F, "F"], [R, "R"], [B, "B"], [L, "L"],
-  ];
-  for (const [face, centerColor] of sides) {
+  const sideFaces = [F, R, B, L];
+  for (const faceFn of sideFaces) {
+    const center = f[faceFn(4)];
     for (let i = 3; i < 9; i++) {
-      if (f[face(i)] !== centerColor) return false;
+      if (f[faceFn(i)] !== center) return false;
     }
   }
   return true;
@@ -88,10 +89,11 @@ export function isSolvedFacelets(f: FaceletString): boolean {
  *   UFL: U6 (top), F0 (F-face), L2 (L-face) — CW=F, CCW=L
  */
 export function readCornerOrientations(f: FaceletString): number[] {
+  const topColor = f[U(4)];
   const corner = (top: number, cw: number, ccw: number): number => {
-    if (f[top] === "U") return 0;
-    if (f[cw] === "U") return 1;
-    if (f[ccw] === "U") return 2;
+    if (f[top] === topColor) return 0;
+    if (f[cw] === topColor) return 1;
+    if (f[ccw] === topColor) return 2;
     return -1;
   };
   return [
@@ -111,11 +113,12 @@ export function readCornerOrientations(f: FaceletString): number[] {
  * Oriented = 1 (U sticker on top), not oriented = 0.
  */
 export function readEdgeOrientations(f: FaceletString): number[] {
+  const topColor = f[U(4)];
   return [
-    f[U(1)] === "U" ? 1 : 0,
-    f[U(5)] === "U" ? 1 : 0,
-    f[U(7)] === "U" ? 1 : 0,
-    f[U(3)] === "U" ? 1 : 0,
+    f[U(1)] === topColor ? 1 : 0,
+    f[U(5)] === topColor ? 1 : 0,
+    f[U(7)] === topColor ? 1 : 0,
+    f[U(3)] === topColor ? 1 : 0,
   ];
 }
 

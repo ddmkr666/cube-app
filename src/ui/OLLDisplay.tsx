@@ -21,12 +21,12 @@ export function OLLDisplay({ oll }: Props) {
     <div className="oll-display">
       <div className="oll-display__header">
         <OLLPatternImage
-          corners={recognition.cornerState}
-          edges={recognition.edgeState}
+          corners={recognition.targetCornerState}
+          edges={recognition.targetEdgeState}
         />
         <div className="oll-display__meta">
           <div className="oll-display__phase">
-            {cse.phase === "edges" ? "OLL · Edge Orientation" : "OLL · Corner Orientation"}
+            {cse.phase === "edges" ? "OLL Part 1: Edges" : "OLL Part 2: Corners"}
           </div>
           <div className="oll-display__name">{cse.name}</div>
           <div className="oll-display__desc">{cse.description}</div>

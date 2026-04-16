@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCubeConnection } from "./hooks/useCubeConnection";
 import { useScramble } from "./hooks/useScramble";
 import { useTimer } from "./hooks/useTimer";
@@ -37,6 +37,11 @@ export function App() {
   const pll = usePLL(helperFacelets, helperMoveHistory);
   const trainer = usePLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const connected = cube.status.state === "connected";
+
+  useEffect(() => {
+    if (!trainerActive || !cube.gyroCurrentRef.current) return;
+    trainerGyroResetRef.current = { ...cube.gyroCurrentRef.current };
+  }, [trainerActive, trainer.iteration, cube.gyroCurrentRef]);
 
   // Show scramble sequence only while actively scrambling (not after it's done)
   const showScramble = scramble.state === "scrambling"

@@ -86,7 +86,7 @@ export const PLL_TRAINER_CASES: PLLTrainerCase[] = [
     id: "edges-adjacent",
     displayName: "Adjacent Edge Swap",
     phase: "edges",
-    algorithm: "R' U' R2 U R U R' U' R U R U' R' U2",
+    algorithm: "R' U' R2 U R U R' U' R U R U' R U' R' U2",
     description: "No edges are solved; hold the pair to swap on the front-right",
     targetCornerPermutation: [0, 1, 2, 3],
     targetEdgePermutation: [1, 0, 3, 2],

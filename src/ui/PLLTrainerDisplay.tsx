@@ -20,14 +20,19 @@ function statusLabel(trainer: PLLTrainerStatus): string {
 export function PLLTrainerDisplay({ trainer }: Props) {
   const { sequence } = trainer;
   const sectionLabel = trainer.section === "part1" ? "PLL Part 1" : "PLL Part 2";
+  const isTestMode = trainer.mode === "test";
 
   return (
     <div className="trainer-display">
       <div className="trainer-display__header">
         <div className="trainer-display__meta">
-          <div className="oll-display__phase">Algorithm Trainer · 2-Look PLL · {sectionLabel}</div>
-          <div className="oll-display__name">{trainer.selectedCase.displayName}</div>
-          <div className="oll-display__desc">{trainer.selectedCase.description}</div>
+          <div className="oll-display__phase">Algorithm Trainer · 2-Look PLL · {sectionLabel} · {isTestMode ? "Test" : "Learn"}</div>
+          <div className="oll-display__name">{isTestMode ? "Recognition Test" : trainer.selectedCase.displayName}</div>
+          <div className="oll-display__desc">
+            {isTestMode
+              ? "Identify the case from the cube state and execute the correct algorithm from memory."
+              : trainer.selectedCase.description}
+          </div>
         </div>
 
         <div className={`trainer-badge trainer-badge--${trainer.feedback}`}>
@@ -39,12 +44,14 @@ export function PLLTrainerDisplay({ trainer }: Props) {
         <button className="secondary" onClick={trainer.retryCase}>Retry</button>
         <button className="secondary" onClick={trainer.nextCase}>Next</button>
         <button className="secondary" onClick={trainer.randomCase}>Random</button>
-        <button className="secondary" onClick={trainer.toggleAlgorithm}>
-          {trainer.shownAlgorithm ? "Hide Algorithm" : "Show Algorithm"}
-        </button>
+        {trainer.revealAllowed && (
+          <button className="secondary" onClick={trainer.toggleAlgorithm}>
+            {trainer.shownAlgorithm ? "Hide Algorithm" : "Show Algorithm"}
+          </button>
+        )}
       </div>
 
-      {trainer.shownAlgorithm ? (
+      {trainer.revealAllowed && trainer.shownAlgorithm ? (
         <div className="oll-display__moves">
           {formatPLLDisplayMoves(trainer.selectedCase.id, trainer.algorithmMoves).map(({ move, index, prefix, suffix }) => {
             let cls = "scramble-move";
@@ -60,16 +67,22 @@ export function PLLTrainerDisplay({ trainer }: Props) {
           })}
         </div>
       ) : (
-        <div className="trainer-display__hidden">Algorithm hidden. Try to recall it before turning.</div>
+        <div className="trainer-display__hidden">
+          {isTestMode
+            ? "Algorithm hidden. Recognize the case from the cube and solve it from memory."
+            : "Algorithm hidden. Try to recall it before turning."}
+        </div>
       )}
 
       {trainer.feedback === "ready" && (
         <div className="scramble-display__hint">
-          Start turning on the smart cube. The trainer ignores the real cube state and only checks your move sequence.
+          {isTestMode
+            ? "Study the cube, identify the case, and start when ready."
+            : "Start turning on the smart cube. The trainer ignores the real cube state and only checks your move sequence."}
         </div>
       )}
 
-      {trainer.feedback === "in_progress" && trainer.nextExpectedMove && (
+      {!isTestMode && trainer.feedback === "in_progress" && trainer.nextExpectedMove && (
         <div className="scramble-display__hint">
           Expected next move: <strong>{trainer.nextExpectedMove}</strong>
         </div>
@@ -115,11 +128,25 @@ function formatCountdown(elapsed: number): string {
 }
 
 function formatPLLDisplayMoves(caseId: string, moves: string[]) {
-  const groupSexyMove = caseId === "corners-headlights" || caseId === "corners-no-headlights";
+  const prefixMap: Record<number, string> = {};
+  const suffixMap: Record<number, string> = {};
+
+  if (caseId === "corners-headlights") {
+    prefixMap[0] = "( ";
+    suffixMap[3] = " )";
+  }
+
+  if (caseId === "corners-no-headlights") {
+    prefixMap[9] = "( ";
+    suffixMap[12] = " )";
+    prefixMap[13] = "( ";
+    suffixMap[16] = " )";
+  }
+
   return moves.map((move, index) => ({
     move,
     index,
-    prefix: groupSexyMove && index === 0 ? "( " : "",
-    suffix: groupSexyMove && index === 3 ? " )" : "",
+    prefix: prefixMap[index] ?? "",
+    suffix: suffixMap[index] ?? "",
   }));
 }

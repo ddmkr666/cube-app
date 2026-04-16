@@ -22,6 +22,17 @@ export function TrainerPanel({ active, onActivate, onDeactivate, onResetGyro, tr
       {active && (
         <div className="trainer-panel__body">
           <label className="trainer-panel__field">
+            <span>Trainer Mode</span>
+            <select
+              value={trainer.mode}
+              onChange={(e) => trainer.setMode(e.target.value as "learn" | "test")}
+            >
+              <option value="learn">Learn</option>
+              <option value="test">Test</option>
+            </select>
+          </label>
+
+          <label className="trainer-panel__field">
             <span>PLL Section</span>
             <select
               value={trainer.section}
@@ -32,19 +43,21 @@ export function TrainerPanel({ active, onActivate, onDeactivate, onResetGyro, tr
             </select>
           </label>
 
-          <label className="trainer-panel__field">
-            <span>Case</span>
-            <select
-              value={trainer.selectedCase.id}
-              onChange={(e) => trainer.selectCase(e.target.value)}
-            >
-              {trainer.cases.map((cse) => (
-                <option key={cse.id} value={cse.id}>
-                  {cse.phase === "corners" ? "Corners" : "Edges"} - {cse.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
+          {trainer.mode === "learn" && (
+            <label className="trainer-panel__field">
+              <span>Case</span>
+              <select
+                value={trainer.selectedCase.id}
+                onChange={(e) => trainer.selectCase(e.target.value)}
+              >
+                {trainer.cases.map((cse) => (
+                  <option key={cse.id} value={cse.id}>
+                    {cse.phase === "corners" ? "Corners" : "Edges"} - {cse.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <button className="secondary" onClick={onResetGyro}>
             Reset Trainer Gyro

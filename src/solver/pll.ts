@@ -114,7 +114,7 @@ const EDGE_CASES = {
     id: "adjacent",
     name: "Adjacent Edge Swap",
     phase: "edges" as const,
-    alg: "R' U' R2 U R U R' U' R U R U' R' U2",
+    alg: "R' U' R2 U R U R' U' R U R U' R U' R' U2",
     description: "No edges are solved; hold the pair to swap on the front-right",
     tuple: [1, 0, 3, 2],
     orientationOffset: 0,

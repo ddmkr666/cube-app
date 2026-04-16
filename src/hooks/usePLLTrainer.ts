@@ -128,19 +128,14 @@ export function usePLLTrainer(
 
     const normalizedMoves = newMoves.map((record) => {
       const baseMove = remapTrainerMove(record.move);
-      const lockedRotation = getNoHeadlightsFrameRotation(
-        selectedCase.id,
+      const lockedRotation = getTrainerFrameRotation(
         baseMove,
         freeAngleRotationRef.current,
         gyroCurrentRef.current,
         gyroResetRef.current,
       );
 
-      if (
-        selectedCase.id === "corners-no-headlights"
-        && freeAngleRotationRef.current === null
-        && faceOf(baseMove) !== "U"
-      ) {
+      if (freeAngleRotationRef.current === null && faceOf(baseMove) !== "U") {
         freeAngleRotationRef.current = lockedRotation;
       }
 
@@ -152,7 +147,7 @@ export function usePLLTrainer(
 
     setTrainerMoveHistory((prev) => [...prev, ...normalizedMoves]);
     setUserMoves((prev) => [...prev, ...normalizedMoves.map((m) => m.move)]);
-  }, [moveHistory, selectedCase.id, gyroCurrentRef, gyroResetRef]);
+  }, [moveHistory, gyroCurrentRef, gyroResetRef]);
 
   const feedback: TrainerFeedbackState = useMemo(() => {
     switch (sequence.state) {
@@ -308,14 +303,12 @@ function faceOf(move: string): string {
   return move[0];
 }
 
-function getNoHeadlightsFrameRotation(
-  caseId: string,
+function getTrainerFrameRotation(
   move: string,
   lockedRotation: 0 | 1 | 2 | 3 | null,
   gyroCurrent: RawQuaternion | null,
   gyroReset: RawQuaternion | null,
 ): 0 | 1 | 2 | 3 {
-  if (caseId !== "corners-no-headlights") return 0;
   if (lockedRotation !== null) return lockedRotation;
   if (faceOf(move) === "U") return 0;
   return currentTrainerYawRotation(gyroCurrent, gyroReset);

@@ -5,6 +5,7 @@ import { MoveRecord } from "../cube/types";
 import { applyMovesToFacelets } from "../cube/moves";
 import { getInverseMove } from "../cube/scramble";
 import { SequenceStatus, useMoveSequence } from "./useMoveSequence";
+import { useTrainerTimes } from "./useTrainerTimes";
 import {
   buildPLLTrainerFacelets,
   buildPLLTrainerStartFacelets,
@@ -27,18 +28,20 @@ export interface PLLTrainerStatus {
   virtualFacelets: string;
   algorithmMoves: string[];
   alignmentMove: string;
-  userMoves: string[];
   sequence: SequenceStatus;
   feedback: TrainerFeedbackState;
+  recentTimes: number[];
+  averageOf5: number | null;
+  averageOf25: number | null;
+  averageOf50: number | null;
+  autoRetryCountdownMs: number | null;
   shownAlgorithm: boolean;
-  strictMode: boolean;
   nextExpectedMove: string | null;
   selectCase: (caseId: string) => void;
   randomCase: () => void;
   nextCase: () => void;
   retryCase: () => void;
   toggleAlgorithm: () => void;
-  setStrictMode: (value: boolean) => void;
   setSection: (value: PLLTrainerSection) => void;
 }
 
@@ -50,15 +53,17 @@ export function usePLLTrainer(
   const [section, setSection] = useState<PLLTrainerSection>("part1");
   const [selectedCaseId, setSelectedCaseId] = useState<string>(() => randomPLLTrainerCaseId("part1"));
   const [shownAlgorithm, setShownAlgorithm] = useState(true);
-  const [strictMode, setStrictMode] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [userMoves, setUserMoves] = useState<string[]>([]);
   const [trainerMoveHistory, setTrainerMoveHistory] = useState<MoveRecord[]>([]);
+  const [autoRetryCountdownMs, setAutoRetryCountdownMs] = useState<number | null>(null);
   const [colorRotation, setColorRotation] = useState<0 | 1 | 2 | 3>(0);
   const [alignmentMove, setAlignmentMove] = useState<string>(() => randomAlignmentMove("corners"));
   const [edgeVariant, setEdgeVariant] = useState<number[]>(() => randomEdgeVariant("corners"));
   const prevSerialRef = useRef<number | null>(null);
   const freeAngleRotationRef = useRef<0 | 1 | 2 | 3 | null>(null);
+  const attemptStartedAtRef = useRef<number | null>(null);
+  const recordedSequenceRef = useRef<string | null>(null);
   const cases = useMemo(
     () => PLL_TRAINER_CASES.filter((cse) => caseMatchesSection(cse, section)),
     [section],
@@ -68,6 +73,7 @@ export function usePLLTrainer(
     const baseCase = getPLLTrainerCase(selectedCaseId);
     return withPLLTrainerEdgeVariant(baseCase, edgeVariant);
   }, [selectedCaseId, edgeVariant]);
+  const trainerTimes = useTrainerTimes(selectedCaseId);
 
   useEffect(() => {
     if (cases.some((cse) => cse.id === selectedCaseId)) return;
@@ -98,7 +104,7 @@ export function usePLLTrainer(
     [selectedCase.algorithm],
   );
 
-  const sequenceId = `${selectedCase.id}:${attempt}:${strictMode ? "strict" : "lenient"}`;
+  const sequenceId = `${selectedCase.id}:${attempt}`;
 
   const sequence = useMoveSequence(
     algorithmMoves,
@@ -112,6 +118,9 @@ export function usePLLTrainer(
       ? moveHistory[moveHistory.length - 1].serial
       : null;
     freeAngleRotationRef.current = null;
+    attemptStartedAtRef.current = null;
+    recordedSequenceRef.current = null;
+    setAutoRetryCountdownMs(null);
     setTrainerMoveHistory([]);
     setUserMoves([]);
   }, [sequenceId]);
@@ -149,6 +158,27 @@ export function usePLLTrainer(
     setUserMoves((prev) => [...prev, ...normalizedMoves.map((m) => m.move)]);
   }, [moveHistory, gyroCurrentRef, gyroResetRef]);
 
+  useEffect(() => {
+    if (trainerMoveHistory.length === 0 || attemptStartedAtRef.current !== null) return;
+    attemptStartedAtRef.current = trainerMoveHistory[0].localTimestamp;
+  }, [trainerMoveHistory]);
+
+  useEffect(() => {
+    if (
+      sequence.state !== "done"
+      || attemptStartedAtRef.current === null
+      || trainerMoveHistory.length === 0
+      || recordedSequenceRef.current === sequenceId
+    ) {
+      return;
+    }
+
+    const finishedAt = trainerMoveHistory[trainerMoveHistory.length - 1].localTimestamp;
+    const elapsed = Math.max(0, finishedAt - attemptStartedAtRef.current);
+    trainerTimes.addTime(selectedCase.id, elapsed);
+    recordedSequenceRef.current = sequenceId;
+  }, [sequence.state, sequenceId, selectedCase.id, trainerMoveHistory, trainerTimes]);
+
   const feedback: TrainerFeedbackState = useMemo(() => {
     switch (sequence.state) {
       case "error":
@@ -166,6 +196,13 @@ export function usePLLTrainer(
   const nextExpectedMove = sequence.state === "done"
     ? null
     : algorithmMoves[sequence.currentIndex] ?? null;
+  const recentTimes = useMemo(
+    () => trainerTimes.records.slice(-3).map((record) => record.elapsed).reverse(),
+    [trainerTimes.records],
+  );
+  const averageOf5 = useMemo(() => averageOfLast(trainerTimes.records, 5), [trainerTimes.records]);
+  const averageOf25 = useMemo(() => averageOfLast(trainerTimes.records, 25), [trainerTimes.records]);
+  const averageOf50 = useMemo(() => averageOfLast(trainerTimes.records, 50), [trainerTimes.records]);
 
   const selectCase = useCallback((caseId: string) => {
     const baseCase = getPLLTrainerCase(caseId);
@@ -204,13 +241,33 @@ export function usePLLTrainer(
     setAttempt((value) => value + 1);
   }, [alignmentMove, colorRotation, edgeVariant, selectedCase.phase]);
 
+  useEffect(() => {
+    if (sequence.state !== "done") return;
+
+    const startedAt = Date.now();
+    const durationMs = 5000;
+    setAutoRetryCountdownMs(durationMs);
+
+    const intervalId = window.setInterval(() => {
+      const remaining = Math.max(0, durationMs - (Date.now() - startedAt));
+      setAutoRetryCountdownMs(remaining);
+    }, 100);
+
+    const timeoutId = window.setTimeout(() => {
+      window.clearInterval(intervalId);
+      setAutoRetryCountdownMs(0);
+      retryCase();
+    }, durationMs);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+      setAutoRetryCountdownMs(null);
+    };
+  }, [sequence.state, retryCase]);
+
   const toggleAlgorithm = useCallback(() => {
     setShownAlgorithm((value) => !value);
-  }, []);
-
-  const updateStrictMode = useCallback((value: boolean) => {
-    setStrictMode(value);
-    setAttempt((current) => current + 1);
   }, []);
 
   const updateSection = useCallback((value: PLLTrainerSection) => {
@@ -231,18 +288,20 @@ export function usePLLTrainer(
     virtualFacelets,
     algorithmMoves,
     alignmentMove,
-    userMoves,
     sequence,
     feedback,
+    recentTimes,
+    averageOf5,
+    averageOf25,
+    averageOf50,
+    autoRetryCountdownMs,
     shownAlgorithm,
-    strictMode,
     nextExpectedMove,
     selectCase,
     randomCase,
     nextCase,
     retryCase,
     toggleAlgorithm,
-    setStrictMode: updateStrictMode,
     setSection: updateSection,
   };
 }
@@ -356,4 +415,10 @@ function currentTrainerYawRotation(
   const angle = Math.atan2(forward.x, forward.z);
   const quarterTurns = Math.round(angle / (Math.PI / 2));
   return (((quarterTurns % 4) + 4) % 4) as 0 | 1 | 2 | 3;
+}
+
+function averageOfLast(records: Array<{ elapsed: number }>, count: number): number | null {
+  if (records.length < count) return null;
+  const window = records.slice(-count);
+  return window.reduce((sum, record) => sum + record.elapsed, 0) / count;
 }

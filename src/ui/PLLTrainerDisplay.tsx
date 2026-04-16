@@ -44,18 +44,6 @@ export function PLLTrainerDisplay({ trainer }: Props) {
         </button>
       </div>
 
-      <div className="trainer-display__stats mono">
-        <span>Section: {sectionLabel}</span>
-        <span>Progress: {Math.min(sequence.currentIndex, trainer.algorithmMoves.length)} / {trainer.algorithmMoves.length}</span>
-        <span>Mode: {trainer.strictMode ? "strict" : "lenient"}</span>
-      </div>
-
-      {trainer.alignmentMove && (
-        <div className="scramble-display__hint">
-          Align the top first: <strong>{trainer.alignmentMove}</strong>, so the case matches the teaching orientation.
-        </div>
-      )}
-
       {trainer.shownAlgorithm ? (
         <div className="oll-display__moves">
           {formatPLLDisplayMoves(trainer.selectedCase.id, trainer.algorithmMoves).map(({ move, index, prefix, suffix }) => {
@@ -93,30 +81,45 @@ export function PLLTrainerDisplay({ trainer }: Props) {
         </div>
       )}
 
-      {trainer.feedback === "completed" && (
-        <div className="scramble-display__done">
-          Nice - algorithm completed. Continue with the next case or retry this one.
+      {trainer.recentTimes.length > 0 && (
+        <div className="trainer-times__recent trainer-times__recent--inline">
+          <span className="trainer-times__recent-label">Recent</span>
+          <div className="moves">
+            {trainer.recentTimes.map((time, index) => (
+              <span key={`${time}-${index}`} className="move mono">{formatElapsed(time)}</span>
+            ))}
+          </div>
+          <div className="trainer-times__averages mono">
+            <span>ao5 <strong>{formatElapsed(trainer.averageOf5)}</strong></span>
+            <span>ao25 <strong>{formatElapsed(trainer.averageOf25)}</strong></span>
+            <span>ao50 <strong>{formatElapsed(trainer.averageOf50)}</strong></span>
+          </div>
+          {trainer.autoRetryCountdownMs != null && (
+            <div className="trainer-times__countdown mono">
+              Next retry in <strong>{formatCountdown(trainer.autoRetryCountdownMs)}</strong>
+            </div>
+          )}
         </div>
       )}
-
-      <div className="trainer-display__input">
-        <div className="trainer-display__input-label">Live input</div>
-        <div className="moves">
-          {trainer.userMoves.length === 0 && <span className="facelets">No moves recorded yet.</span>}
-          {trainer.userMoves.map((move, i) => (
-            <span key={`${move}-${i}`} className="move mono">{move}</span>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
 
+function formatElapsed(elapsed: number | null): string {
+  if (elapsed == null) return "--";
+  return `${(elapsed / 1000).toFixed(2)}s`;
+}
+
+function formatCountdown(elapsed: number): string {
+  return `${(elapsed / 1000).toFixed(1)}s`;
+}
+
 function formatPLLDisplayMoves(caseId: string, moves: string[]) {
+  const groupSexyMove = caseId === "corners-headlights" || caseId === "corners-no-headlights";
   return moves.map((move, index) => ({
     move,
     index,
-    prefix: caseId === "corners-headlights" && index === 0 ? "( " : "",
-    suffix: caseId === "corners-headlights" && index === 3 ? " )" : "",
+    prefix: groupSexyMove && index === 0 ? "( " : "",
+    suffix: groupSexyMove && index === 3 ? " )" : "",
   }));
 }

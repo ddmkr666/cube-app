@@ -323,17 +323,43 @@ select {
   color: var(--muted);
 }
 
-.trainer-display__input {
+.trainer-times__recent {
+  margin-top: 2px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
-.trainer-display__input-label {
+.trainer-times__recent-label {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--muted);
+}
+
+.trainer-times__recent--inline .moves {
+  max-height: none;
+  padding: 0;
+}
+
+.trainer-times__averages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.trainer-times__averages strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.trainer-times__countdown {
+  color: var(--muted);
+}
+
+.trainer-times__countdown strong {
+  color: var(--warn);
 }
 
 /* ── Timer display (above the 3D cube, replaces scramble after done) ── */

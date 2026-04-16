@@ -46,30 +46,6 @@ export function TrainerPanel({ active, onActivate, onDeactivate, onResetGyro, tr
             </select>
           </label>
 
-          <label className="trainer-panel__check">
-            <input
-              type="checkbox"
-              checked={trainer.shownAlgorithm}
-              onChange={trainer.toggleAlgorithm}
-            />
-            <span>Reveal algorithm</span>
-          </label>
-
-          <label className="trainer-panel__check">
-            <input
-              type="checkbox"
-              checked={trainer.strictMode}
-              onChange={(e) => trainer.setStrictMode(e.target.checked)}
-            />
-            <span>Strict matching</span>
-          </label>
-
-          <div className="trainer-panel__actions">
-            <button className="secondary" onClick={trainer.retryCase}>Retry</button>
-            <button className="secondary" onClick={trainer.nextCase}>Next</button>
-            <button className="secondary" onClick={trainer.randomCase}>Random</button>
-          </div>
-
           <button className="secondary" onClick={onResetGyro}>
             Reset Trainer Gyro
           </button>

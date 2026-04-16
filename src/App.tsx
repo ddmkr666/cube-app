@@ -40,8 +40,9 @@ export function App() {
 
   useEffect(() => {
     if (!trainerActive || !cube.gyroCurrentRef.current) return;
+    if (trainer.section === "part1+2" && trainerGyroResetRef.current) return;
     trainerGyroResetRef.current = { ...cube.gyroCurrentRef.current };
-  }, [trainerActive, trainer.iteration, cube.gyroCurrentRef]);
+  }, [trainerActive, trainer.iteration, trainer.section, cube.gyroCurrentRef]);
 
   // Show scramble sequence only while actively scrambling (not after it's done)
   const showScramble = scramble.state === "scrambling"

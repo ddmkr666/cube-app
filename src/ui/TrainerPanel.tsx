@@ -36,10 +36,11 @@ export function TrainerPanel({ active, onActivate, onDeactivate, onResetGyro, tr
             <span>PLL Section</span>
             <select
               value={trainer.section}
-              onChange={(e) => trainer.setSection(e.target.value as "part1" | "part2")}
+              onChange={(e) => trainer.setSection(e.target.value as "part1" | "part2" | "part1+2")}
             >
               <option value="part1">Part 1 - Corners</option>
               <option value="part2">Part 2 - Edges</option>
+              <option value="part1+2">Part 1 + 2 - Full PLL</option>
             </select>
           </label>
 

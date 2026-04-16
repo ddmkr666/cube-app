@@ -19,17 +19,28 @@ function statusLabel(trainer: PLLTrainerStatus): string {
 
 export function PLLTrainerDisplay({ trainer }: Props) {
   const { sequence } = trainer;
-  const sectionLabel = trainer.section === "part1" ? "PLL Part 1" : "PLL Part 2";
+  const sectionLabel = trainer.section === "part1"
+    ? "PLL Part 1"
+    : trainer.section === "part2"
+      ? "PLL Part 2"
+      : "PLL Part 1 + 2";
   const isTestMode = trainer.mode === "test";
+  const fullSolveMode = trainer.section === "part1+2";
 
   return (
     <div className="trainer-display">
       <div className="trainer-display__header">
         <div className="trainer-display__meta">
           <div className="oll-display__phase">Algorithm Trainer · 2-Look PLL · {sectionLabel} · {isTestMode ? "Test" : "Learn"}</div>
-          <div className="oll-display__name">{isTestMode ? "Recognition Test" : trainer.selectedCase.displayName}</div>
+          <div className="oll-display__name">
+            {fullSolveMode
+              ? isTestMode ? "Recognition Test" : `${trainer.selectedCase.displayName} - Full Solve`
+              : isTestMode ? "Recognition Test" : trainer.selectedCase.displayName}
+          </div>
           <div className="oll-display__desc">
-            {isTestMode
+            {fullSolveMode
+              ? "Start from this PLL state and solve the cube completely. Success means the virtual cube reaches solved."
+              : isTestMode
               ? "Identify the case from the cube state and execute the correct algorithm from memory."
               : trainer.selectedCase.description}
           </div>
@@ -51,7 +62,7 @@ export function PLLTrainerDisplay({ trainer }: Props) {
         )}
       </div>
 
-      {trainer.revealAllowed && trainer.shownAlgorithm ? (
+      {trainer.revealAllowed && trainer.shownAlgorithm && !fullSolveMode ? (
         <div className="oll-display__moves">
           {formatPLLDisplayMoves(trainer.selectedCase.id, trainer.algorithmMoves).map(({ move, index, prefix, suffix }) => {
             let cls = "scramble-move";
@@ -68,7 +79,9 @@ export function PLLTrainerDisplay({ trainer }: Props) {
         </div>
       ) : (
         <div className="trainer-display__hidden">
-          {isTestMode
+          {fullSolveMode
+            ? "Solve the generated PLL state to a solved cube. No algorithm tracking is used in this mode."
+            : isTestMode
             ? "Algorithm hidden. Recognize the case from the cube and solve it from memory."
             : "Algorithm hidden. Try to recall it before turning."}
         </div>
@@ -76,19 +89,21 @@ export function PLLTrainerDisplay({ trainer }: Props) {
 
       {trainer.feedback === "ready" && (
         <div className="scramble-display__hint">
-          {isTestMode
+          {fullSolveMode
+            ? "Inspect the generated PLL state and solve the cube completely."
+            : isTestMode
             ? "Study the cube, identify the case, and start when ready."
             : "Start turning on the smart cube. The trainer ignores the real cube state and only checks your move sequence."}
         </div>
       )}
 
-      {!isTestMode && trainer.feedback === "in_progress" && trainer.nextExpectedMove && (
+      {!fullSolveMode && !isTestMode && trainer.feedback === "in_progress" && trainer.nextExpectedMove && (
         <div className="scramble-display__hint">
           Expected next move: <strong>{trainer.nextExpectedMove}</strong>
         </div>
       )}
 
-      {trainer.feedback === "incorrect" && sequence.errorCorrection && (
+      {!fullSolveMode && trainer.feedback === "incorrect" && sequence.errorCorrection && (
         <div className="scramble-display__correction">
           Wrong move - do <strong>{sequence.errorCorrection}</strong> to get back on track, or retry the case.
         </div>

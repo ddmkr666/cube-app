@@ -1,27 +1,41 @@
+import { useRef, useState } from "react";
 import { useCubeConnection } from "./hooks/useCubeConnection";
 import { useScramble } from "./hooks/useScramble";
 import { useTimer } from "./hooks/useTimer";
 import { useSolveTimes } from "./hooks/useSolveTimes";
 import { useOLL } from "./hooks/useOLL";
 import { usePLL } from "./hooks/usePLL";
+import { usePLLTrainer } from "./hooks/usePLLTrainer";
 import { CubeViewport } from "./render/CubeViewport";
 import { ConnectPanel } from "./ui/ConnectPanel";
 import { ScramblePanel } from "./ui/ScramblePanel";
 import { ScrambleDisplay } from "./ui/ScrambleDisplay";
 import { OLLDisplay } from "./ui/OLLDisplay";
 import { PLLDisplay } from "./ui/PLLDisplay";
+import { PLLTrainerDisplay } from "./ui/PLLTrainerDisplay";
 import { TimerDisplay } from "./ui/TimerDisplay";
 import { HistoryPanel } from "./ui/HistoryPanel";
 import { DebugPanel } from "./ui/DebugPanel";
 import { StatusPanel } from "./ui/StatusPanel";
+import { TrainerPanel } from "./ui/TrainerPanel";
+import { RawQuaternion } from "./bluetooth/ganCube";
 
 export function App() {
+  const [mode, setMode] = useState<"solve" | "trainer">("solve");
+  const trainerGyroResetRef = useRef<RawQuaternion | null>(null);
   const cube = useCubeConnection();
-  const scramble = useScramble(cube.moveHistory);
+  const trainerActive = mode === "trainer";
+  const helperMoveHistory = trainerActive ? [] : cube.moveHistory;
+  const helperFacelets = trainerActive ? null : cube.facelets;
+  const helperLastMove = trainerActive ? null : cube.lastMove;
+  const helperSolved = trainerActive ? false : cube.solved;
+
+  const scramble = useScramble(helperMoveHistory);
   const { times, addTime, clearAll, exportCSV } = useSolveTimes();
-  const timer = useTimer(scramble.state, cube.lastMove, cube.solved, addTime);
-  const oll = useOLL(cube.facelets, cube.moveHistory);
-  const pll = usePLL(cube.facelets, cube.moveHistory);
+  const timer = useTimer(scramble.state, helperLastMove, helperSolved, addTime);
+  const oll = useOLL(helperFacelets, helperMoveHistory);
+  const pll = usePLL(helperFacelets, helperMoveHistory);
+  const trainer = usePLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const connected = cube.status.state === "connected";
 
   // Show scramble sequence only while actively scrambling (not after it's done)
@@ -44,7 +58,18 @@ export function App() {
           onMarkSolved={cube.markSolved}
           onResetGyro={cube.resetGyro}
         />
-        <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />
+        <TrainerPanel
+          active={trainerActive}
+          onActivate={() => setMode("trainer")}
+          onDeactivate={() => setMode("solve")}
+          onResetGyro={() => {
+            if (cube.gyroCurrentRef.current) {
+              trainerGyroResetRef.current = { ...cube.gyroCurrentRef.current };
+            }
+          }}
+          trainer={trainer}
+        />
+        {!trainerActive && <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />}
         <StatusPanel status={cube.status} solved={cube.solved} />
         <HistoryPanel times={times} onClear={clearAll} onExport={exportCSV} />
         <DebugPanel
@@ -54,15 +79,29 @@ export function App() {
         />
       </aside>
       <main className="app__main">
-        {showScramble && <ScrambleDisplay scramble={scramble} />}
-        {!showScramble && oll.active && <OLLDisplay oll={oll} />}
-        {!showScramble && !oll.active && pll.active && <PLLDisplay pll={pll} />}
-        {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
-        <CubeViewport
-          facelets={cube.facelets}
-          gyroCurrentRef={cube.gyroCurrentRef}
-          gyroResetRef={cube.gyroResetRef}
-        />
+        {trainerActive ? (
+          <>
+            <PLLTrainerDisplay trainer={trainer} />
+            <CubeViewport
+              facelets={trainer.virtualFacelets}
+              gyroCurrentRef={cube.gyroCurrentRef}
+              gyroResetRef={trainerGyroResetRef}
+              gyroFrame="yellow-top"
+            />
+          </>
+        ) : (
+          <>
+            {showScramble && <ScrambleDisplay scramble={scramble} />}
+            {!showScramble && pll.active && <PLLDisplay pll={pll} />}
+            {!showScramble && !pll.active && oll.active && <OLLDisplay oll={oll} />}
+            {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
+            <CubeViewport
+              facelets={cube.facelets}
+              gyroCurrentRef={cube.gyroCurrentRef}
+              gyroResetRef={cube.gyroResetRef}
+            />
+          </>
+        )}
       </main>
     </div>
   );

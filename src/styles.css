@@ -91,6 +91,15 @@ button.secondary {
   color: var(--text);
 }
 
+select {
+  background: #0f1319;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
 .kv { display: grid; grid-template-columns: 110px 1fr; gap: 4px 8px; font-size: 13px; }
 .kv dt { color: var(--muted); }
 .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
@@ -122,6 +131,41 @@ button.secondary {
   font-size: 11px;
   word-break: break-all;
   color: var(--muted);
+}
+
+.trainer-panel__mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trainer-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.trainer-panel__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.trainer-panel__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.trainer-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 
 /* ── Scramble display (above the 3D cube) ─────────────────────────── */
@@ -221,6 +265,75 @@ button.secondary {
   flex-wrap: wrap;
   gap: 6px;
   align-items: baseline;
+}
+
+.trainer-display {
+  flex-shrink: 0;
+  padding: 14px 24px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.trainer-display__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.trainer-display__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trainer-badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.trainer-badge--ready { color: var(--muted); }
+.trainer-badge--in_progress { color: var(--warn); }
+.trainer-badge--incorrect { color: var(--err); }
+.trainer-badge--completed { color: var(--ok); }
+
+.trainer-display__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trainer-display__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.trainer-display__hidden {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.trainer-display__input {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trainer-display__input-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
 }
 
 /* ── Timer display (above the 3D cube, replaces scramble after done) ── */

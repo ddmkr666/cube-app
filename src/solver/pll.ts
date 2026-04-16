@@ -20,8 +20,9 @@ export interface PLLRecognition {
   targetEdgePermutation: number[];
 }
 
-interface CornerCaseDef extends PLLCase { tuple: number[] }
-interface EdgeCaseDef extends PLLCase { tuple: number[] }
+interface EdgeCaseDef extends PLLCase {
+  tuple: number[];
+}
 
 // URFDLB order helpers.
 const U = (i: number) => i;
@@ -49,73 +50,83 @@ function normalizeAufIndex(idx: number): number {
   return ((idx % 4) + 4) % 4;
 }
 
-function displayTuple(tuple: number[], orientationOffset: number = 0): number[] {
-  return rotRight(tuple, normalizeAufIndex(orientationOffset));
+function rotatePermutationRight(tuple: number[], k: number): number[] {
+  const n = tuple.length;
+  const amount = normalizeAufIndex(k) % n;
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    const sourceIndex = ((i - amount) % n + n) % n;
+    out[i] = (tuple[sourceIndex] + amount) % n;
+  }
+  return out;
 }
 
-const CORNER_CASES: CornerCaseDef[] = [
-  {
-    id: "adjacent",
-    name: "Adjacent Corner Swap",
-    phase: "corners",
-    alg: "R' F R' B2 R F' R' B2 R2",
-    description: "Swap the two front corners",
-    tuple: [0, 1, 3, 2],
-    orientationOffset: 0,
-  },
-  {
-    id: "diagonal",
-    name: "Diagonal Corner Swap",
-    phase: "corners",
-    alg: "F R U' R' U' R U R' F' R U R' U' R' F R F'",
-    description: "Swap the front-left and back-right corners",
-    tuple: [2, 1, 0, 3],
-    orientationOffset: 0,
-  },
-];
+function displayTuple(tuple: number[], orientationOffset: number = 0): number[] {
+  return rotatePermutationRight(tuple, orientationOffset);
+}
 
-const EDGE_CASES: EdgeCaseDef[] = [
-  {
-    id: "ua",
-    name: "Ua Perm",
-    phase: "edges",
-    alg: "R U' R U R U R U' R' U' R2",
-    description: "Three edges cycle clockwise with the back edge solved",
-    tuple: [0, 3, 1, 2],
-    orientationOffset: 0,
+const CORNER_CASES = {
+  adjacent: {
+    id: "adjacent",
+    name: "Headlights",
+    phase: "corners" as const,
+    alg: "R U R' U' R' F R2 U' R' U' R U R' F'",
+    description: "One side has matching headlights; hold that solved side on the left",
   },
-  {
-    id: "ub",
-    name: "Ub Perm",
-    phase: "edges",
+  diagonal: {
+    id: "diagonal",
+    name: "No Headlights",
+    phase: "corners" as const,
+    alg: "F R U' R' U' R U R' F' R U R' U' R' F R F'",
+    description: "No side has matching headlights; perform from any angle",
+  },
+};
+
+const EDGE_CASES = {
+  clockwise: {
+    id: "clockwise",
+    name: "3 Edges Cycling Clockwise",
+    phase: "edges" as const,
     alg: "R2 U R U R' U' R' U' R' U R'",
-    description: "Three edges cycle counter-clockwise with the back edge solved",
+    description: "One edge is solved; hold the solved edge on the back",
     tuple: [0, 2, 3, 1],
     orientationOffset: 0,
   },
-  {
-    id: "h",
-    name: "H Perm",
-    phase: "edges",
-    alg: "M2 U M2 U2 M2 U M2",
-    description: "Opposite edges swap",
+  anticlockwise: {
+    id: "anticlockwise",
+    name: "3 Edges Cycling Anticlockwise",
+    phase: "edges" as const,
+    alg: "R U' R U R U R U' R' U' R2",
+    description: "One edge is solved; hold the solved edge on the back",
+    tuple: [0, 3, 1, 2],
+    orientationOffset: 0,
+  },
+  opposite: {
+    id: "opposite",
+    name: "Opposite Edge Swap",
+    phase: "edges" as const,
+    alg: "R2 U2 R2 U2 R2 U R2 U2 R2 U2 R2 U'",
+    description: "No edges are solved; each edge swaps with its opposite",
     tuple: [2, 3, 0, 1],
     orientationOffset: 0,
   },
-  {
-    id: "z",
-    name: "Z Perm",
-    phase: "edges",
-    alg: "M2 U M2 U M' U2 M2 U2 M' U2",
-    description: "Adjacent edge pairs swap",
+  adjacent: {
+    id: "adjacent",
+    name: "Adjacent Edge Swap",
+    phase: "edges" as const,
+    alg: "R' U' R2 U R U R' U' R U R U' R' U2",
+    description: "No edges are solved; hold the pair to swap on the front-right",
     tuple: [1, 0, 3, 2],
     orientationOffset: 0,
   },
-];
+};
 
-function findMatch<T extends { tuple: number[] }>(cases: T[], input: number[]): { cse: T; auf: string } | null {
+function findMatch<T extends { tuple: number[] }>(
+  cases: T[],
+  input: number[],
+): { cse: T; auf: string } | null {
   for (let k = 0; k < 4; k++) {
-    const rotated = rotRight(input, k);
+    const rotated = rotatePermutationRight(input, k);
     for (const c of cases) {
       if (tuplesEqual(rotated, c.tuple)) return { cse: c, auf: AUF_MOVES[k] };
     }
@@ -155,6 +166,91 @@ function readEdgePermutation(f: FaceletString): number[] {
   return positions.map((color) => centers.indexOf(color));
 }
 
+function readHeadlightSides(f: FaceletString): number[] {
+  const sides = [
+    [B(0), B(2)], // back
+    [R(0), R(2)], // right
+    [F(0), F(2)], // front
+    [L(0), L(2)], // left
+  ];
+
+  return sides
+    .map(([a, b], index) => (f[a] === f[b] ? index : -1))
+    .filter((index) => index !== -1);
+}
+
+function recognizePLLCorners(
+  facelets: FaceletString,
+  cornerPermutation: number[],
+  solvedEdges: number[],
+): PLLRecognition | null {
+  const headlights = readHeadlightSides(facelets);
+
+  if (headlights.length === 1) {
+    const leftSideIndex = 3;
+    const aufIdx = normalizeAufIndex(leftSideIndex - headlights[0]);
+    return {
+      phase: "corners",
+      case: CORNER_CASES.adjacent,
+      auf: AUF_MOVES[aufIdx],
+      algWithAuf: AUF_MOVES[aufIdx]
+        ? `${AUF_MOVES[aufIdx]} ${CORNER_CASES.adjacent.alg}`
+        : CORNER_CASES.adjacent.alg,
+      targetCornerPermutation: rotRight(cornerPermutation, aufIdx),
+      targetEdgePermutation: solvedEdges,
+    };
+  }
+
+  if (headlights.length === 0) {
+    return {
+      phase: "corners",
+      case: CORNER_CASES.diagonal,
+      auf: "",
+      algWithAuf: CORNER_CASES.diagonal.alg,
+      targetCornerPermutation: cornerPermutation,
+      targetEdgePermutation: solvedEdges,
+    };
+  }
+
+  return null;
+}
+
+function solvedEdgePositions(edgePermutation: number[]): number[] {
+  return edgePermutation
+    .map((pieceIndex, positionIndex) => (pieceIndex === positionIndex ? positionIndex : -1))
+    .filter((positionIndex) => positionIndex !== -1);
+}
+
+function recognizePLLEdges(
+  edgePermutation: number[],
+  solvedCorners: number[],
+): PLLRecognition | null {
+  const solvedPositions = solvedEdgePositions(edgePermutation);
+  const edgeCases: EdgeCaseDef[] =
+    solvedPositions.length === 1
+      ? [EDGE_CASES.clockwise, EDGE_CASES.anticlockwise]
+      : solvedPositions.length === 0
+        ? [EDGE_CASES.opposite, EDGE_CASES.adjacent]
+        : [];
+
+  const match = findMatch(edgeCases, edgePermutation);
+  if (!match) return null;
+
+  const displayOffset = match.cse.orientationOffset ?? 0;
+  const aufIdx = normalizeAufIndex(AUF_MOVES.indexOf(match.auf) + displayOffset);
+
+  return {
+    phase: "edges",
+    case: match.cse,
+    auf: AUF_MOVES[aufIdx],
+    algWithAuf: AUF_MOVES[aufIdx]
+      ? `${AUF_MOVES[aufIdx]} ${match.cse.alg}`
+      : match.cse.alg,
+    targetCornerPermutation: solvedCorners,
+    targetEdgePermutation: displayTuple(match.cse.tuple, displayOffset),
+  };
+}
+
 export function recognizePLL(facelets: FaceletString): PLLRecognition {
   const solvedCorners = [0, 1, 2, 3];
   const solvedEdges = [0, 1, 2, 3];
@@ -186,50 +282,26 @@ export function recognizePLL(facelets: FaceletString): PLLRecognition {
   }
 
   if (!cornersSolved) {
-    const m = findMatch(CORNER_CASES, cornerPermutation);
-    if (!m) {
-      return {
-        phase: "corners",
-        auf: "",
-        algWithAuf: "",
-        targetCornerPermutation: solvedCorners,
-        targetEdgePermutation: solvedEdges,
-      };
-    }
-
-    const displayOffset = m.cse.orientationOffset ?? 0;
-    const aufIdx = normalizeAufIndex(AUF_MOVES.indexOf(m.auf) + displayOffset);
+    const cornerRecognition = recognizePLLCorners(facelets, cornerPermutation, solvedEdges);
+    if (cornerRecognition) return cornerRecognition;
 
     return {
       phase: "corners",
-      case: m.cse,
-      auf: AUF_MOVES[aufIdx],
-      algWithAuf: AUF_MOVES[aufIdx] ? `${AUF_MOVES[aufIdx]} ${m.cse.alg}` : m.cse.alg,
-      targetCornerPermutation: displayTuple(m.cse.tuple, displayOffset),
-      targetEdgePermutation: solvedEdges,
-    };
-  }
-
-  const m = findMatch(EDGE_CASES, edgePermutation);
-  if (!m) {
-    return {
-      phase: "edges",
       auf: "",
       algWithAuf: "",
-      targetCornerPermutation: solvedCorners,
+      targetCornerPermutation: cornerPermutation,
       targetEdgePermutation: solvedEdges,
     };
   }
 
-  const displayOffset = m.cse.orientationOffset ?? 0;
-  const aufIdx = normalizeAufIndex(AUF_MOVES.indexOf(m.auf) + displayOffset);
+  const edgeRecognition = recognizePLLEdges(edgePermutation, solvedCorners);
+  if (edgeRecognition) return edgeRecognition;
 
   return {
     phase: "edges",
-    case: m.cse,
-    auf: AUF_MOVES[aufIdx],
-    algWithAuf: AUF_MOVES[aufIdx] ? `${AUF_MOVES[aufIdx]} ${m.cse.alg}` : m.cse.alg,
+    auf: "",
+    algWithAuf: "",
     targetCornerPermutation: solvedCorners,
-    targetEdgePermutation: displayTuple(m.cse.tuple, displayOffset),
+    targetEdgePermutation: edgePermutation,
   };
 }

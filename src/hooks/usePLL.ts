@@ -35,11 +35,19 @@ export function usePLL(
   const [seqId, setSeqId] = useState<number>(0);
   const lastSequenceKeyRef = useRef<string>("");
   const [orientationIndex, setOrientationIndex] = useState<number | null>(null);
+  const lockedTopColorRef = useRef<string | null>(null);
+  const lockedBottomColorRef = useRef<string | null>(null);
+  const lockedFrontColorRef = useRef<string | null>(null);
+  const lockedBackColorRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!facelets) {
       setRecognition(null);
       setOrientationIndex(null);
+      lockedTopColorRef.current = null;
+      lockedBottomColorRef.current = null;
+      lockedFrontColorRef.current = null;
+      lockedBackColorRef.current = null;
       if (lastSequenceKeyRef.current) {
         lastSequenceKeyRef.current = "";
         setAlgString("");
@@ -51,6 +59,10 @@ export function usePLL(
     if (isSolvedFacelets(facelets)) {
       setRecognition(null);
       setOrientationIndex(null);
+      lockedTopColorRef.current = null;
+      lockedBottomColorRef.current = null;
+      lockedFrontColorRef.current = null;
+      lockedBackColorRef.current = null;
       if (lastSequenceKeyRef.current) {
         lastSequenceKeyRef.current = "";
         setAlgString("");
@@ -62,7 +74,22 @@ export function usePLL(
     const orientedCandidates = getAllF2LOrientedFacelets(facelets);
     if (orientedCandidates.length === 0) return;
 
-    const best = orientedCandidates
+    const filteredCandidates = orientedCandidates.filter((candidate) => {
+      const topColor = candidate.facelets[4];
+      const bottomColor = candidate.facelets[31];
+      const frontColor = candidate.facelets[22];
+      const backColor = candidate.facelets[49];
+
+      if (lockedTopColorRef.current && topColor !== lockedTopColorRef.current) return false;
+      if (lockedBottomColorRef.current && bottomColor !== lockedBottomColorRef.current) return false;
+      if (lockedFrontColorRef.current && frontColor !== lockedFrontColorRef.current) return false;
+      if (lockedBackColorRef.current && backColor !== lockedBackColorRef.current) return false;
+      return true;
+    });
+
+    const candidates = filteredCandidates.length > 0 ? filteredCandidates : orientedCandidates;
+
+    const best = candidates
       .map((candidate) => ({
         candidate,
         recognition: recognizePLL(candidate.facelets),
@@ -80,8 +107,20 @@ export function usePLL(
       })[0];
 
     const r = best.recognition;
+
+    // PLL algorithms can temporarily create non-OLL top patterns mid-sequence.
+    // If we're already guiding a PLL case, keep that guidance until the solve
+    // state stabilizes again instead of falling back to OLL.
+    if (lastSequenceKeyRef.current && r.phase === "done") {
+      return;
+    }
+
     setRecognition(r);
     setOrientationIndex(best.candidate.orientationIndex);
+    lockedTopColorRef.current = best.candidate.facelets[4];
+    lockedBottomColorRef.current = best.candidate.facelets[31];
+    lockedFrontColorRef.current = best.candidate.facelets[22];
+    lockedBackColorRef.current = best.candidate.facelets[49];
 
     const nextSequenceKey = r.case ? `${r.case.id}:${r.auf}` : "";
     if (nextSequenceKey !== lastSequenceKeyRef.current) {

@@ -9,6 +9,7 @@ interface CubeViewportProps {
   facelets: string;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
+  gyroFrame?: "standard" | "yellow-top";
 }
 
 /**
@@ -37,13 +38,17 @@ interface GyroRotatorProps {
   facelets: string;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
+  gyroFrame: "standard" | "yellow-top";
 }
+
+const TRAINER_FRAME = new THREE.Quaternion(0, 0, 1, 0);
+const TRAINER_FRAME_INV = TRAINER_FRAME.clone().invert();
 
 /**
  * Wraps Cube3D in a group whose rotation tracks the physical cube's gyro.
  * Runs inside the R3F Canvas so it can use useFrame without re-rendering React.
  */
-function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProps) {
+function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef, gyroFrame }: GyroRotatorProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
@@ -59,6 +64,10 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProp
       _target.copy(_current);
     }
 
+    if (gyroFrame === "yellow-top") {
+      _target.premultiply(TRAINER_FRAME).multiply(TRAINER_FRAME_INV);
+    }
+
     // Smooth interpolation so the rendered cube doesn't jitter.
     groupRef.current.quaternion.slerp(_target, 0.2);
   });
@@ -70,7 +79,12 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef }: GyroRotatorProp
   );
 }
 
-export function CubeViewport({ facelets, gyroCurrentRef, gyroResetRef }: CubeViewportProps) {
+export function CubeViewport({
+  facelets,
+  gyroCurrentRef,
+  gyroResetRef,
+  gyroFrame = "standard",
+}: CubeViewportProps) {
   return (
     <Canvas
       camera={{ position: [0, 2.5, 9], fov: 34 }}
@@ -83,6 +97,7 @@ export function CubeViewport({ facelets, gyroCurrentRef, gyroResetRef }: CubeVie
         facelets={facelets}
         gyroCurrentRef={gyroCurrentRef}
         gyroResetRef={gyroResetRef}
+        gyroFrame={gyroFrame}
       />
       <OrbitControls enablePan={false} minDistance={4} maxDistance={14} />
     </Canvas>

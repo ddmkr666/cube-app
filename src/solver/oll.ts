@@ -70,7 +70,7 @@ export interface OLLCase {
   id: string;
   name: string;
   phase: "edges" | "corners";
-  alg: string;             // canonical face-turn algorithm (no wide/rotation moves)
+  alg: string;             // teaching algorithm shown to the user; may include wide moves
   /** Short human description of the visible pattern on top. */
   description: string;
   /**
@@ -249,12 +249,12 @@ const EDGE_CASES: EdgeCaseDef[] = [
 
 const CORNER_CASES: CornerCaseDef[] = [
   { id: "sune", name: "Sune", phase: "corners", alg: "R U R' U R U2 R'", description: "Oriented corner at back-left, three others twisted clockwise", tuple: [0, 2, 2, 2], orientationOffset: 0 },
-  { id: "antisune", name: "Anti-Sune", phase: "corners", alg: "R U2 R' U' R U' R'", description: "Oriented corner at back-left, three others twisted counter-clockwise", tuple: [0, 1, 1, 1], orientationOffset: 0 },
-  { id: "h", name: "H (Double-Sune)", phase: "corners", alg: "R U R' U R U' R' U R U2 R'", description: "No corners oriented; headlights on left and right", tuple: [1, 2, 1, 2], orientationOffset: 0 },
-  { id: "pi", name: "Pi (Bruno)", phase: "corners", alg: "R U2 R2 U' R2 U' R2 U2 R", description: "No corners oriented; headlights on front and back", tuple: [2, 1, 2, 1], orientationOffset: 0 },
+  { id: "antisune", name: "Anti-Sune", phase: "corners", alg: "R U2 R' U' R U' R'", description: "Oriented corner at back-right, three others twisted counter-clockwise", tuple: [0, 1, 1, 1], orientationOffset: 1 },
+  { id: "h", name: "H (Double-Sune)", phase: "corners", alg: "R U R' U R U' R' U R U2 R'", description: "No corners oriented; headlights on left and right", tuple: [2, 1, 2, 1], orientationOffset: 1 },
+  { id: "pi", name: "Pi (Bruno)", phase: "corners", alg: "R U2 R2 U' R2 U' R2 U2 R", description: "No corners oriented; headlights on front and back", tuple: [1, 2, 1, 2], orientationOffset: 0 },
   { id: "u", name: "U (Headlights)", phase: "corners", alg: "R2 D R' U2 R D' R' U2 R'", description: "Back corners oriented, headlights on the front", tuple: [0, 0, 2, 1], orientationOffset: 0 },
-  { id: "t", name: "T", phase: "corners", alg: "R U R' U' R' F R F'", description: "Two unmatched yellow corners on the left", tuple: [0, 0, 1, 2], orientationOffset: 3 },
-  { id: "l", name: "L (Diagonal)", phase: "corners", alg: "F R U R' U' R U R' U' F'", description: "Two diagonally-opposite corners oriented", tuple: [0, 1, 0, 2], orientationOffset: 0 },
+  { id: "t", name: "T", phase: "corners", alg: "r U R' U' r' F R F'", description: "Two unmatched yellow corners on the left", tuple: [0, 0, 1, 2], orientationOffset: 2 },
+  { id: "l", name: "L (Diagonal)", phase: "corners", alg: "F R' F' r U R U' r'", description: "Two diagonally-opposite corners oriented", tuple: [0, 1, 0, 2], orientationOffset: 2 },
 ];
 
 // --- Matching ----------------------------------------------------------------

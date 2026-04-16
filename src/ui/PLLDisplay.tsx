@@ -11,6 +11,7 @@ export function PLLDisplay({ pll }: Props) {
 
   const { state, currentIndex, errorCorrection } = sequence;
   const { case: cse } = recognition;
+  const usesSliceMoves = moves.some((move) => /^[MES]/i.test(move));
 
   return (
     <div className="oll-display">
@@ -29,17 +30,17 @@ export function PLLDisplay({ pll }: Props) {
       </div>
 
       <div className="oll-display__moves">
-        {moves.map((m, i) => {
+        {formatPLLDisplayMoves(cse.name, moves).map(({ move, index, prefix, suffix }) => {
           let cls = "scramble-move";
-          if (state === "done" || i < currentIndex) cls += " scramble-move--done";
-          else if (i === currentIndex) {
+          if (state === "done" || index < currentIndex) cls += " scramble-move--done";
+          else if (index === currentIndex) {
             if (state === "error") cls += " scramble-move--error";
             else if (state === "half-turn") cls += " scramble-move--half";
             else cls += " scramble-move--current";
           } else {
             cls += " scramble-move--upcoming";
           }
-          return <span key={i} className={cls}>{m}</span>;
+          return <span key={index} className={cls}>{prefix}{move}{suffix}</span>;
         })}
       </div>
 
@@ -51,7 +52,9 @@ export function PLLDisplay({ pll }: Props) {
 
       {!trackable && (
         <div className="scramble-display__hint">
-          This PLL uses slice moves, so the smart-cube tracker can only verify the result state, not each move.
+          {usesSliceMoves
+            ? "This PLL uses slice moves (M/E/S). GAN move events only report U/R/F/D/L/B turns, so slice moves cannot be tracked move-by-move."
+            : "This PLL uses moves the smart-cube tracker cannot verify move-by-move."}
         </div>
       )}
 
@@ -67,4 +70,13 @@ export function PLLDisplay({ pll }: Props) {
       )}
     </div>
   );
+}
+
+function formatPLLDisplayMoves(caseName: string, moves: string[]) {
+  return moves.map((move, index) => ({
+    move,
+    index,
+    prefix: caseName === "Headlights" && index === 0 ? "( " : "",
+    suffix: caseName === "Headlights" && index === 3 ? " )" : "",
+  }));
 }

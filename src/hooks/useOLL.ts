@@ -41,6 +41,8 @@ export function useOLL(
   const [orientationIndex, setOrientationIndex] = useState<number | null>(null);
   const lockedTopColorRef = useRef<string | null>(null);
   const lockedBottomColorRef = useRef<string | null>(null);
+  const lockedFrontColorRef = useRef<string | null>(null);
+  const lockedBackColorRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!facelets) {
@@ -48,6 +50,8 @@ export function useOLL(
       setOrientationIndex(null);
       lockedTopColorRef.current = null;
       lockedBottomColorRef.current = null;
+      lockedFrontColorRef.current = null;
+      lockedBackColorRef.current = null;
       if (lastSequenceKeyRef.current) {
         lastSequenceKeyRef.current = "";
         setAlgString("");
@@ -61,6 +65,8 @@ export function useOLL(
       setOrientationIndex(null);
       lockedTopColorRef.current = null;
       lockedBottomColorRef.current = null;
+      lockedFrontColorRef.current = null;
+      lockedBackColorRef.current = null;
       if (lastSequenceKeyRef.current) {
         lastSequenceKeyRef.current = "";
         setAlgString("");
@@ -79,9 +85,13 @@ export function useOLL(
     const filteredCandidates = orientedCandidates.filter((candidate) => {
       const topColor = candidate.facelets[4];
       const bottomColor = candidate.facelets[31];
+      const frontColor = candidate.facelets[22];
+      const backColor = candidate.facelets[49];
 
       if (lockedTopColorRef.current && topColor !== lockedTopColorRef.current) return false;
       if (lockedBottomColorRef.current && bottomColor !== lockedBottomColorRef.current) return false;
+      if (lockedFrontColorRef.current && frontColor !== lockedFrontColorRef.current) return false;
+      if (lockedBackColorRef.current && backColor !== lockedBackColorRef.current) return false;
       return true;
     });
 
@@ -113,6 +123,8 @@ export function useOLL(
     setOrientationIndex(best.candidate.orientationIndex);
     lockedTopColorRef.current = best.candidate.facelets[4];
     lockedBottomColorRef.current = best.candidate.facelets[31];
+    lockedFrontColorRef.current = best.candidate.facelets[22];
+    lockedBackColorRef.current = best.candidate.facelets[49];
     
     const nextSequenceKey = r.case ? `${r.case.id}:${r.auf}` : "";
     if (nextSequenceKey !== lastSequenceKeyRef.current) {
@@ -128,7 +140,7 @@ export function useOLL(
   );
 
   const trackable = useMemo(
-    () => moves.every((move) => !/^[rludfbMESxyz]/.test(move)),
+    () => moves.every((move) => !/^[MESxyz]/i.test(move)),
     [moves],
   );
 

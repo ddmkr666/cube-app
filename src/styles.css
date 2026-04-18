@@ -38,6 +38,7 @@ html, body, #root {
   grid-area: header;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
   border-bottom: 1px solid var(--border);
   background: rgba(14, 20, 31, 0.86);
@@ -45,6 +46,98 @@ html, body, #root {
   font-weight: 600;
   letter-spacing: 0.3px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.28);
+}
+
+.app__header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app__header-actions button {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
+.app__mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app__mode-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  font-size: 11px;
+}
+
+.app__mode-button--active {
+  background: rgba(87, 166, 255, 0.14);
+  border-color: rgba(87, 166, 255, 0.4);
+  color: #ffffff;
+}
+
+.app__logo {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: #0f141d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 8px 18px rgba(0, 0, 0, 0.25);
+}
+
+.app__logo-segment {
+  position: absolute;
+  inset: 5px;
+  border-radius: 10px;
+}
+
+.app__logo-segment--blue {
+  background: #0a5cff;
+  clip-path: polygon(0 0, 100% 0, 62% 38%, 38% 38%);
+}
+
+.app__logo-segment--green {
+  background: #22db14;
+  clip-path: polygon(0 0, 38% 38%, 38% 62%, 0 100%);
+}
+
+.app__logo-segment--red {
+  background: #e60000;
+  clip-path: polygon(0 100%, 38% 62%, 62% 62%, 100% 100%);
+}
+
+.app__logo-segment--yellow {
+  background: #f5f500;
+  clip-path: polygon(100% 0, 62% 38%, 62% 62%, 100% 100%);
+}
+
+.app__logo-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 3px;
+  background: #06090e;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .app__side {
@@ -179,6 +272,32 @@ select {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+}
+
+.debug-panel {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.debug-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.debug-panel__header h3 {
+  margin-bottom: 0;
+}
+
+.debug-panel__toggle {
+  min-width: 60px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.debug-panel__body {
+  margin-top: 10px;
 }
 
 /* ── Scramble display (above the 3D cube) ─────────────────────────── */

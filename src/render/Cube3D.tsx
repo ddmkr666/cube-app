@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import * as THREE from "three";
 import { FACELET_GEOMETRY } from "../cube/geometry";
 import { Face } from "../cube/types";
 import { CUBIE_BODY, FACE_COLORS } from "./colors";
@@ -9,9 +10,36 @@ interface Cube3DProps {
   highlights?: Partial<Record<number, string>>;
 }
 
-const CUBIE_SIZE = 0.96;   // leaves a thin gap between cubies
-const STICKER_SIZE = 0.86;
-const STICKER_OFFSET = CUBIE_SIZE / 2 + 0.002;
+const CUBIE_SIZE = 0.98;
+const STICKER_SIZE = 0.865;
+const STICKER_RADIUS = 0.045;
+const STICKER_DEPTH = 0.024;
+const STICKER_OFFSET = CUBIE_SIZE / 2 + STICKER_DEPTH * 0.26;
+
+function createRoundedStickerGeometry() {
+  const half = STICKER_SIZE / 2;
+  const radius = Math.min(STICKER_RADIUS, half - 0.01);
+  const shape = new THREE.Shape();
+
+  shape.moveTo(-half + radius, -half);
+  shape.lineTo(half - radius, -half);
+  shape.quadraticCurveTo(half, -half, half, -half + radius);
+  shape.lineTo(half, half - radius);
+  shape.quadraticCurveTo(half, half, half - radius, half);
+  shape.lineTo(-half + radius, half);
+  shape.quadraticCurveTo(-half, half, -half, half - radius);
+  shape.lineTo(-half, -half + radius);
+  shape.quadraticCurveTo(-half, -half, -half + radius, -half);
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: STICKER_DEPTH,
+    bevelEnabled: false,
+    curveSegments: 7,
+  });
+
+  geometry.center();
+  return geometry;
+}
 
 /**
  * Renders a 3x3x3 Rubik's cube. The cube body is drawn as 27 black cubies,
@@ -30,13 +58,18 @@ export function Cube3D({ facelets, highlights }: Cube3DProps) {
         for (let z = -1; z <= 1; z++) positions.push([x, y, z]);
     return positions;
   }, []);
+  const stickerGeometry = useMemo(() => createRoundedStickerGeometry(), []);
 
   return (
     <group>
       {cubies.map((p, i) => (
-        <mesh key={i} position={p}>
+        <mesh key={i} position={p} castShadow receiveShadow>
           <boxGeometry args={[CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE]} />
-          <meshStandardMaterial color={CUBIE_BODY} roughness={0.6} metalness={0.05} />
+          <meshStandardMaterial
+            color={CUBIE_BODY}
+            roughness={0.92}
+            metalness={0.0}
+          />
         </mesh>
       ))}
 
@@ -64,9 +97,13 @@ export function Cube3D({ facelets, highlights }: Cube3DProps) {
         }
 
         return (
-          <mesh key={g.index} position={position} rotation={rotation}>
-            <planeGeometry args={[STICKER_SIZE, STICKER_SIZE]} />
-            <meshStandardMaterial color={color} roughness={0.45} metalness={0.0} />
+          <mesh key={g.index} position={position} rotation={rotation} castShadow receiveShadow>
+            <primitive object={stickerGeometry} attach="geometry" />
+            <meshStandardMaterial
+              color={color}
+              roughness={0.64}
+              metalness={0.0}
+            />
           </mesh>
         );
       })}

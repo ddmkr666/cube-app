@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { ContactShadows, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { Cube3D } from "./Cube3D";
 import { RawQuaternion } from "../bluetooth/ganCube";
@@ -79,6 +79,34 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef, gyroFrame }: Gyro
   );
 }
 
+function SceneLights() {
+  return (
+    <>
+      <color attach="background" args={["#161b23"]} />
+      <ambientLight intensity={0.8} />
+      <directionalLight
+        position={[4.5, 7, 5.5]}
+        intensity={1.0}
+        color="#ffffff"
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-bias={-0.0002}
+      />
+      <directionalLight position={[-4, 2, -3]} intensity={0.2} color="#ffffff" />
+      <ContactShadows
+        position={[0, -3.15, 0]}
+        opacity={0.1}
+        scale={8}
+        blur={2.4}
+        far={4.5}
+        resolution={1024}
+        color="#050505"
+      />
+    </>
+  );
+}
+
 export function CubeViewport({
   facelets,
   gyroCurrentRef,
@@ -86,20 +114,22 @@ export function CubeViewport({
   gyroFrame = "standard",
 }: CubeViewportProps) {
   return (
-    <Canvas
-      camera={{ position: [0, 2.5, 9], fov: 34 }}
-      style={{ width: "100%", flex: 1, background: "#0f1115" }}
-    >
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[6, 8, 4]} intensity={0.9} />
-      <directionalLight position={[-5, -3, -4]} intensity={0.35} />
-      <GyroRotator
-        facelets={facelets}
-        gyroCurrentRef={gyroCurrentRef}
-        gyroResetRef={gyroResetRef}
-        gyroFrame={gyroFrame}
-      />
-      <OrbitControls enablePan={false} minDistance={4} maxDistance={14} />
-    </Canvas>
+    <div className="cube-stage">
+      <Canvas
+        shadows
+        dpr={[1, 2]}
+        camera={{ position: [0, 2.35, 7.7], fov: 31 }}
+        style={{ width: "100%", flex: 1, background: "transparent" }}
+      >
+        <SceneLights />
+        <GyroRotator
+          facelets={facelets}
+          gyroCurrentRef={gyroCurrentRef}
+          gyroResetRef={gyroResetRef}
+          gyroFrame={gyroFrame}
+        />
+        <OrbitControls enablePan={false} minDistance={4.5} maxDistance={11} />
+      </Canvas>
+    </div>
   );
 }

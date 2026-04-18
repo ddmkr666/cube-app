@@ -141,17 +141,19 @@ export function App() {
             />
           </>
         ) : (
-          <>
-            {showScramble && <ScrambleDisplay scramble={scramble} />}
-            {!showScramble && pll.active && <PLLDisplay pll={pll} />}
-            {!showScramble && !pll.active && oll.active && <OLLDisplay oll={oll} />}
-            {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
+          <div className="app__viewport">
             <CubeViewport
               facelets={cube.facelets}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={cube.gyroResetRef}
             />
-          </>
+            <div className="app__overlay-stack">
+              {showScramble && <ScrambleDisplay scramble={scramble} />}
+              {!showScramble && pll.active && <PLLDisplay pll={pll} />}
+              {!showScramble && !pll.active && oll.active && <OLLDisplay oll={oll} />}
+              {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
+            </div>
+          </div>
         )}
       </main>
     </div>

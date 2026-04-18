@@ -67,6 +67,10 @@ html, body, #root {
   border-radius: 8px;
 }
 
+.app__header-actions .app__mode-button {
+  font-size: 11px;
+}
+
 .app__mode-switch {
   display: flex;
   align-items: center;
@@ -83,12 +87,39 @@ html, body, #root {
   text-transform: uppercase;
   letter-spacing: 0.7px;
   font-size: 11px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition:
+    transform 0.08s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .app__mode-button--active {
   background: rgba(87, 166, 255, 0.14);
   border-color: rgba(87, 166, 255, 0.4);
   color: #ffffff;
+}
+
+.app__mode-button:hover:not(:disabled) {
+  border-color: rgba(87, 166, 255, 0.28);
+  color: #dfe9ff;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.app__mode-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.975);
+  background: rgba(87, 166, 255, 0.2);
+  border-color: rgba(87, 166, 255, 0.48);
+  box-shadow:
+    inset 0 2px 6px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(87, 166, 255, 0.08);
+}
+
+.app__mode-button:focus-visible {
+  outline: 2px solid rgba(87, 166, 255, 0.45);
+  outline-offset: 2px;
 }
 
 .app__logo {

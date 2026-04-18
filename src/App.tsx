@@ -81,11 +81,17 @@ export function App() {
           </div>
         </div>
         <div className="app__header-actions">
-          <button onClick={cube.connect} disabled={!bluetoothSupported || connecting || connected}>
+          <button
+            type="button"
+            className={connected ? "app__mode-button app__mode-button--active" : "app__mode-button"}
+            onClick={cube.connect}
+            disabled={!bluetoothSupported || connecting || connected}
+          >
             {connecting ? "Connecting..." : connected ? "Connected" : "Connect"}
           </button>
           <button
-            className="secondary"
+            type="button"
+            className="app__mode-button"
             onClick={cube.resetGyro}
             disabled={!connected}
             title="Hold the cube white-side up, green facing you, then click to sync the 3D orientation."
@@ -93,7 +99,8 @@ export function App() {
             Reset Gyro
           </button>
           <button
-            className="secondary"
+            type="button"
+            className="app__mode-button"
             onClick={cube.markSolved}
             disabled={!connected}
             title="Physically solve the cube, then click to re-sync the app."

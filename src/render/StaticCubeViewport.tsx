@@ -2,13 +2,15 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Cube3D } from "./Cube3D";
 import { FaceColors } from "./colors";
+import { MoveRecord } from "../cube/types";
 
 interface StaticCubeViewportProps {
   facelets: string;
   faceColors?: FaceColors;
+  lastMove?: MoveRecord | null;
 }
 
-export function StaticCubeViewport({ facelets, faceColors }: StaticCubeViewportProps) {
+export function StaticCubeViewport({ facelets, faceColors, lastMove }: StaticCubeViewportProps) {
   return (
     <div className="cube-stage cube-stage--static">
       <Canvas
@@ -19,7 +21,7 @@ export function StaticCubeViewport({ facelets, faceColors }: StaticCubeViewportP
       >
         <color attach="background" args={["#161b23"]} />
         <group rotation={[-0.45, 0.7, 0]}>
-          <Cube3D facelets={facelets} faceColors={faceColors} />
+          <Cube3D facelets={facelets} faceColors={faceColors} lastMove={lastMove} />
         </group>
         <OrbitControls enablePan={false} minDistance={5.5} maxDistance={13} />
       </Canvas>

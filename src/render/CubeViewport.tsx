@@ -5,10 +5,12 @@ import * as THREE from "three";
 import { Cube3D } from "./Cube3D";
 import { RawQuaternion } from "../bluetooth/ganCube";
 import { FaceColors } from "./colors";
+import { MoveRecord } from "../cube/types";
 
 interface CubeViewportProps {
   facelets: string;
   faceColors?: FaceColors;
+  lastMove?: MoveRecord | null;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
   gyroFrame?: "standard" | "yellow-top";
@@ -39,6 +41,7 @@ const _target = new THREE.Quaternion();
 interface GyroRotatorProps {
   facelets: string;
   faceColors?: FaceColors;
+  lastMove?: MoveRecord | null;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
   gyroFrame: "standard" | "yellow-top";
@@ -51,7 +54,7 @@ const TRAINER_FRAME_INV = TRAINER_FRAME.clone().invert();
  * Wraps Cube3D in a group whose rotation tracks the physical cube's gyro.
  * Runs inside the R3F Canvas so it can use useFrame without re-rendering React.
  */
-function GyroRotator({ facelets, faceColors, gyroCurrentRef, gyroResetRef, gyroFrame }: GyroRotatorProps) {
+function GyroRotator({ facelets, faceColors, lastMove, gyroCurrentRef, gyroResetRef, gyroFrame }: GyroRotatorProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
@@ -77,7 +80,7 @@ function GyroRotator({ facelets, faceColors, gyroCurrentRef, gyroResetRef, gyroF
 
   return (
     <group ref={groupRef}>
-      <Cube3D facelets={facelets} faceColors={faceColors} />
+      <Cube3D facelets={facelets} faceColors={faceColors} lastMove={lastMove} />
     </group>
   );
 }
@@ -93,6 +96,7 @@ function SceneLights() {
 export function CubeViewport({
   facelets,
   faceColors,
+  lastMove,
   gyroCurrentRef,
   gyroResetRef,
   gyroFrame = "standard",
@@ -109,6 +113,7 @@ export function CubeViewport({
         <GyroRotator
           facelets={facelets}
           faceColors={faceColors}
+          lastMove={lastMove}
           gyroCurrentRef={gyroCurrentRef}
           gyroResetRef={gyroResetRef}
           gyroFrame={gyroFrame}

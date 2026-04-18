@@ -135,6 +135,7 @@ export function App() {
               : <PLLTrainerDisplay trainer={trainer} />}
             <CubeViewport
               facelets={trainerType === "oll" ? ollTrainer.virtualFacelets : trainer.virtualFacelets}
+              lastMove={cube.lastMove}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={trainerGyroResetRef}
               gyroFrame="yellow-top"
@@ -144,6 +145,7 @@ export function App() {
           <div className="app__viewport">
             <CubeViewport
               facelets={cube.facelets}
+              lastMove={cube.lastMove}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={cube.gyroResetRef}
             />

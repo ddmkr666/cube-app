@@ -1,13 +1,15 @@
 import { Face } from "../cube/types";
 
 /** Standard WCA color scheme. */
-export const FACE_COLORS: Record<Face, string> = {
+export type FaceColors = Record<Face, string>;
+
+export const FACE_COLORS: FaceColors = {
   U: "#ffffff", // white
-  D: "#ffff00", // yellow
-  F: "#11fe00", // green
-  B: "#0057ff", // blue
-  R: "#ff2a2a", // red
-  L: "#ff8a00", // orange
+  D: "#f5f500", // yellow
+  F: "#22db14", // green
+  B: "#0a5cff", // blue
+  R: "#e60000", // red
+  L: "#ff8800", // orange
 };
 
 export const CUBIE_BODY = "#161b23";

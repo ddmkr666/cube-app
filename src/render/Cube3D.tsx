@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { FACELET_GEOMETRY } from "../cube/geometry";
 import { Face } from "../cube/types";
-import { CUBIE_BODY, FACE_COLORS } from "./colors";
+import { CUBIE_BODY, FACE_COLORS, FaceColors } from "./colors";
 
 interface Cube3DProps {
   facelets: string;
+  faceColors?: FaceColors;
   /** Optional per-facelet highlight color (future: suggested moves, CFOP stages). */
   highlights?: Partial<Record<number, string>>;
 }
@@ -50,7 +51,7 @@ function createRoundedStickerGeometry() {
  * Highlights are keyed by facelet index so future features (suggested moves,
  * CFOP stages) can overlay on top without touching this component.
  */
-export function Cube3D({ facelets, highlights }: Cube3DProps) {
+export function Cube3D({ facelets, faceColors = FACE_COLORS, highlights }: Cube3DProps) {
   const cubies = useMemo(() => {
     const positions: [number, number, number][] = [];
     for (let x = -1; x <= 1; x++)
@@ -65,13 +66,13 @@ export function Cube3D({ facelets, highlights }: Cube3DProps) {
       {cubies.map((p, i) => (
         <mesh key={i} position={p}>
           <boxGeometry args={[CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE]} />
-          <meshBasicMaterial color={CUBIE_BODY} />
+          <meshBasicMaterial color={CUBIE_BODY} toneMapped={false} />
         </mesh>
       ))}
 
       {FACELET_GEOMETRY.map((g) => {
         const c = (facelets[g.index] ?? "U") as Face;
-        const color = highlights?.[g.index] ?? FACE_COLORS[c] ?? "#888";
+        const color = highlights?.[g.index] ?? faceColors[c] ?? "#888";
 
         const [x, y, z] = g.pos;
         let position: [number, number, number] = [x, y, z];
@@ -95,7 +96,7 @@ export function Cube3D({ facelets, highlights }: Cube3DProps) {
         return (
           <mesh key={g.index} position={position} rotation={rotation}>
             <primitive object={stickerGeometry} attach="geometry" />
-            <meshBasicMaterial color={color} />
+            <meshBasicMaterial color={color} toneMapped={false} />
           </mesh>
         );
       })}

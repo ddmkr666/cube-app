@@ -4,9 +4,11 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { Cube3D } from "./Cube3D";
 import { RawQuaternion } from "../bluetooth/ganCube";
+import { FaceColors } from "./colors";
 
 interface CubeViewportProps {
   facelets: string;
+  faceColors?: FaceColors;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
   gyroFrame?: "standard" | "yellow-top";
@@ -36,6 +38,7 @@ const _target = new THREE.Quaternion();
 
 interface GyroRotatorProps {
   facelets: string;
+  faceColors?: FaceColors;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
   gyroFrame: "standard" | "yellow-top";
@@ -48,7 +51,7 @@ const TRAINER_FRAME_INV = TRAINER_FRAME.clone().invert();
  * Wraps Cube3D in a group whose rotation tracks the physical cube's gyro.
  * Runs inside the R3F Canvas so it can use useFrame without re-rendering React.
  */
-function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef, gyroFrame }: GyroRotatorProps) {
+function GyroRotator({ facelets, faceColors, gyroCurrentRef, gyroResetRef, gyroFrame }: GyroRotatorProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
@@ -74,7 +77,7 @@ function GyroRotator({ facelets, gyroCurrentRef, gyroResetRef, gyroFrame }: Gyro
 
   return (
     <group ref={groupRef}>
-      <Cube3D facelets={facelets} />
+      <Cube3D facelets={facelets} faceColors={faceColors} />
     </group>
   );
 }
@@ -89,6 +92,7 @@ function SceneLights() {
 
 export function CubeViewport({
   facelets,
+  faceColors,
   gyroCurrentRef,
   gyroResetRef,
   gyroFrame = "standard",
@@ -96,18 +100,20 @@ export function CubeViewport({
   return (
     <div className="cube-stage">
       <Canvas
+        flat
         dpr={[1, 2]}
-        camera={{ position: [0, 2.35, 7.7], fov: 31 }}
+        camera={{ position: [0, 3.15, 12.6], fov: 36 }}
         style={{ width: "100%", flex: 1, background: "transparent" }}
       >
         <SceneLights />
         <GyroRotator
           facelets={facelets}
+          faceColors={faceColors}
           gyroCurrentRef={gyroCurrentRef}
           gyroResetRef={gyroResetRef}
           gyroFrame={gyroFrame}
         />
-        <OrbitControls enablePan={false} minDistance={4.5} maxDistance={11} />
+        <OrbitControls enablePan={false} minDistance={5.5} maxDistance={13} />
       </Canvas>
     </div>
   );

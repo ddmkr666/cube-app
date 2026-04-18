@@ -2,12 +2,12 @@ import { Face } from "../cube/types";
 
 /** Standard WCA color scheme. */
 export const FACE_COLORS: Record<Face, string> = {
-  U: "#f5f5f1", // white
-  D: "#eccb34", // yellow
-  F: "#169949", // green
-  B: "#2d6fd2", // blue
-  R: "#d53636", // red
-  L: "#e07f1c", // orange
+  U: "#ffffff", // white
+  D: "#ffff00", // yellow
+  F: "#11fe00", // green
+  B: "#0057ff", // blue
+  R: "#ff2a2a", // red
+  L: "#ff8a00", // orange
 };
 
-export const CUBIE_BODY = "#0d1014";
+export const CUBIE_BODY = "#161b23";

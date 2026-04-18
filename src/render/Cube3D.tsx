@@ -10,10 +10,10 @@ interface Cube3DProps {
   highlights?: Partial<Record<number, string>>;
 }
 
-const CUBIE_SIZE = 0.98;
-const STICKER_SIZE = 0.865;
-const STICKER_RADIUS = 0.045;
-const STICKER_DEPTH = 0.024;
+const CUBIE_SIZE = 0.992;
+const STICKER_SIZE = 0.925;
+const STICKER_RADIUS = 0.032;
+const STICKER_DEPTH = 0.018;
 const STICKER_OFFSET = CUBIE_SIZE / 2 + STICKER_DEPTH * 0.26;
 
 function createRoundedStickerGeometry() {
@@ -63,13 +63,9 @@ export function Cube3D({ facelets, highlights }: Cube3DProps) {
   return (
     <group>
       {cubies.map((p, i) => (
-        <mesh key={i} position={p} castShadow receiveShadow>
+        <mesh key={i} position={p}>
           <boxGeometry args={[CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE]} />
-          <meshStandardMaterial
-            color={CUBIE_BODY}
-            roughness={0.92}
-            metalness={0.0}
-          />
+          <meshBasicMaterial color={CUBIE_BODY} />
         </mesh>
       ))}
 
@@ -97,13 +93,9 @@ export function Cube3D({ facelets, highlights }: Cube3DProps) {
         }
 
         return (
-          <mesh key={g.index} position={position} rotation={rotation} castShadow receiveShadow>
+          <mesh key={g.index} position={position} rotation={rotation}>
             <primitive object={stickerGeometry} attach="geometry" />
-            <meshStandardMaterial
-              color={color}
-              roughness={0.64}
-              metalness={0.0}
-            />
+            <meshBasicMaterial color={color} />
           </mesh>
         );
       })}

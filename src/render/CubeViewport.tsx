@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { ContactShadows, OrbitControls } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { Cube3D } from "./Cube3D";
 import { RawQuaternion } from "../bluetooth/ganCube";
@@ -83,26 +83,6 @@ function SceneLights() {
   return (
     <>
       <color attach="background" args={["#161b23"]} />
-      <ambientLight intensity={0.8} />
-      <directionalLight
-        position={[4.5, 7, 5.5]}
-        intensity={1.0}
-        color="#ffffff"
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-bias={-0.0002}
-      />
-      <directionalLight position={[-4, 2, -3]} intensity={0.2} color="#ffffff" />
-      <ContactShadows
-        position={[0, -3.15, 0]}
-        opacity={0.1}
-        scale={8}
-        blur={2.4}
-        far={4.5}
-        resolution={1024}
-        color="#050505"
-      />
     </>
   );
 }
@@ -116,7 +96,6 @@ export function CubeViewport({
   return (
     <div className="cube-stage">
       <Canvas
-        shadows
         dpr={[1, 2]}
         camera={{ position: [0, 2.35, 7.7], fov: 31 }}
         style={{ width: "100%", flex: 1, background: "transparent" }}

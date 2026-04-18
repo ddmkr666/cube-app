@@ -12,7 +12,7 @@ interface Cube3DProps {
 }
 
 const CUBIE_SIZE = 0.992;
-const STICKER_SIZE = 0.925;
+const STICKER_SIZE = 0.905;
 const STICKER_RADIUS = 0.032;
 const STICKER_DEPTH = 0.018;
 const STICKER_OFFSET = CUBIE_SIZE / 2 + STICKER_DEPTH * 0.26;

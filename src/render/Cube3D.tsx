@@ -18,7 +18,7 @@ const CUBIE_SIZE = 0.992;
 const STICKER_SIZE = 0.905;
 const STICKER_RADIUS = 0.032;
 const STICKER_OFFSET = CUBIE_SIZE / 2 + 0.03;
-const MOVE_ANIMATION_MS = 120;
+const MOVE_ANIMATION_MS = 160;
 const FACELET_RESYNC_DELAY_MS = 750;
 
 type Axis = "x" | "y" | "z";
@@ -88,7 +88,7 @@ function parseMoveAnimation(move: string) {
   }
 
 function eased(progress: number) {
-  return 1 - Math.pow(1 - progress, 3);
+  return -(Math.cos(Math.PI * progress) - 1) / 2;
 }
 
 function createRoundedStickerGeometry() {

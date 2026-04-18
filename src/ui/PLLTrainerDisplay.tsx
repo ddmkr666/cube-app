@@ -25,7 +25,7 @@ export function PLLTrainerDisplay({ trainer }: Props) {
       ? "PLL Part 2"
       : "PLL Part 1 + 2";
   const isTestMode = trainer.mode === "test";
-  const fullSolveMode = trainer.section === "part1+2";
+  const fullSolveMode = trainer.section === "part1+2" || isTestMode;
 
   return (
     <div className="trainer-display">
@@ -34,12 +34,14 @@ export function PLLTrainerDisplay({ trainer }: Props) {
           <div className="oll-display__phase">Algorithm Trainer · 2-Look PLL · {sectionLabel} · {isTestMode ? "Test" : "Learn"}</div>
           <div className="oll-display__name">
             {fullSolveMode
-              ? isTestMode ? "Recognition Test" : `${trainer.selectedCase.displayName} - Full Solve`
+              ? isTestMode ? "Solve Test" : `${trainer.selectedCase.displayName} - Full Solve`
               : isTestMode ? "Recognition Test" : trainer.selectedCase.displayName}
           </div>
           <div className="oll-display__desc">
             {fullSolveMode
-              ? "Start from this PLL state and solve the cube completely. Success means the virtual cube reaches solved."
+              ? isTestMode
+                ? "A PLL case is generated for you. Solve it using normal cube-solving rules, and the attempt completes when the cube is solved."
+                : "Start from this PLL state and solve the cube completely. Success means the virtual cube reaches solved."
               : isTestMode
               ? "Identify the case from the cube state and execute the correct algorithm from memory."
               : trainer.selectedCase.description}
@@ -80,7 +82,7 @@ export function PLLTrainerDisplay({ trainer }: Props) {
       ) : (
         <div className="trainer-display__hidden">
           {fullSolveMode
-            ? "Solve the generated PLL state to a solved cube. No algorithm tracking is used in this mode."
+            ? "Solve the generated PLL state to a solved cube. This mode follows cube state, not a fixed algorithm sequence."
             : isTestMode
             ? "Algorithm hidden. Recognize the case from the cube and solve it from memory."
             : "Algorithm hidden. Try to recall it before turning."}
@@ -90,7 +92,7 @@ export function PLLTrainerDisplay({ trainer }: Props) {
       {trainer.feedback === "ready" && (
         <div className="scramble-display__hint">
           {fullSolveMode
-            ? "Inspect the generated PLL state and solve the cube completely."
+            ? "Inspect the generated PLL state and finish the solve. The attempt completes when the virtual cube is solved."
             : isTestMode
             ? "Study the cube, identify the case, and start when ready."
             : "Start turning on the smart cube. The trainer ignores the real cube state and only checks your move sequence."}

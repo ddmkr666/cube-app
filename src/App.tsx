@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useCubeConnection } from "./hooks/useCubeConnection";
 import { useScramble } from "./hooks/useScramble";
 import { useTimer } from "./hooks/useTimer";
 import { useSolveTimes } from "./hooks/useSolveTimes";
 import { useOLL } from "./hooks/useOLL";
+import { useOLLTrainer } from "./hooks/useOLLTrainer";
 import { usePLL } from "./hooks/usePLL";
 import { usePLLTrainer } from "./hooks/usePLLTrainer";
 import { CubeViewport } from "./render/CubeViewport";
@@ -11,6 +12,7 @@ import { ConnectPanel } from "./ui/ConnectPanel";
 import { ScramblePanel } from "./ui/ScramblePanel";
 import { ScrambleDisplay } from "./ui/ScrambleDisplay";
 import { OLLDisplay } from "./ui/OLLDisplay";
+import { OLLTrainerDisplay } from "./ui/OLLTrainerDisplay";
 import { PLLDisplay } from "./ui/PLLDisplay";
 import { PLLTrainerDisplay } from "./ui/PLLTrainerDisplay";
 import { TimerDisplay } from "./ui/TimerDisplay";
@@ -22,6 +24,7 @@ import { RawQuaternion } from "./bluetooth/ganCube";
 
 export function App() {
   const [mode, setMode] = useState<"solve" | "trainer">("solve");
+  const [trainerType, setTrainerType] = useState<"oll" | "pll">("oll");
   const trainerGyroResetRef = useRef<RawQuaternion | null>(null);
   const cube = useCubeConnection();
   const trainerActive = mode === "trainer";
@@ -35,14 +38,9 @@ export function App() {
   const timer = useTimer(scramble.state, helperLastMove, helperSolved, addTime);
   const oll = useOLL(helperFacelets, helperMoveHistory);
   const pll = usePLL(helperFacelets, helperMoveHistory);
+  const ollTrainer = useOLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const trainer = usePLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const connected = cube.status.state === "connected";
-
-  useEffect(() => {
-    if (!trainerActive || !cube.gyroCurrentRef.current) return;
-    if (trainer.section === "part1+2" && trainerGyroResetRef.current) return;
-    trainerGyroResetRef.current = { ...cube.gyroCurrentRef.current };
-  }, [trainerActive, trainer.iteration, trainer.section, cube.gyroCurrentRef]);
 
   // Show scramble sequence only while actively scrambling (not after it's done)
   const showScramble = scramble.state === "scrambling"
@@ -66,14 +64,17 @@ export function App() {
         />
         <TrainerPanel
           active={trainerActive}
+          trainerType={trainerType}
           onActivate={() => setMode("trainer")}
           onDeactivate={() => setMode("solve")}
+          onTrainerTypeChange={setTrainerType}
           onResetGyro={() => {
             if (cube.gyroCurrentRef.current) {
               trainerGyroResetRef.current = { ...cube.gyroCurrentRef.current };
             }
           }}
-          trainer={trainer}
+          pllTrainer={trainer}
+          ollTrainer={ollTrainer}
         />
         {!trainerActive && <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />}
         <StatusPanel status={cube.status} solved={cube.solved} />
@@ -87,9 +88,11 @@ export function App() {
       <main className="app__main">
         {trainerActive ? (
           <>
-            <PLLTrainerDisplay trainer={trainer} />
+            {trainerType === "oll"
+              ? <OLLTrainerDisplay trainer={ollTrainer} />
+              : <PLLTrainerDisplay trainer={trainer} />}
             <CubeViewport
-              facelets={trainer.virtualFacelets}
+              facelets={trainerType === "oll" ? ollTrainer.virtualFacelets : trainer.virtualFacelets}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={trainerGyroResetRef}
               gyroFrame="yellow-top"

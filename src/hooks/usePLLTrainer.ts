@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as THREE from "three";
 import { RawQuaternion } from "../bluetooth/ganCube";
 import { isSolved } from "../cube/facelets";
 import { MoveRecord } from "../cube/types";
@@ -53,8 +52,8 @@ export interface PLLTrainerStatus {
 
 export function usePLLTrainer(
   moveHistory: MoveRecord[],
-  gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>,
-  gyroResetRef: React.MutableRefObject<RawQuaternion | null>,
+  _gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>,
+  _gyroResetRef: React.MutableRefObject<RawQuaternion | null>,
 ): PLLTrainerStatus {
   const [mode, setMode] = useState<PLLTrainerMode>("learn");
   const [section, setSection] = useState<PLLTrainerSection>("part1");
@@ -68,7 +67,6 @@ export function usePLLTrainer(
   const [alignmentMove, setAlignmentMove] = useState<string>(() => randomAlignmentMove("corners"));
   const [edgeVariant, setEdgeVariant] = useState<number[]>(() => randomEdgeVariant("corners"));
   const prevSerialRef = useRef<number | null>(null);
-  const freeAngleRotationRef = useRef<0 | 1 | 2 | 3 | null>(null);
   const attemptStartedAtRef = useRef<number | null>(null);
   const recordedSequenceRef = useRef<string | null>(null);
   const cases = useMemo(
@@ -83,7 +81,13 @@ export function usePLLTrainer(
       : baseCase;
   }, [selectedCaseId, edgeVariant]);
   const revealAllowed = mode === "learn";
-  const trainerTimes = useTrainerTimes(section === "part1+2" ? `${selectedCaseId}:full` : selectedCaseId);
+  const solveToCompletion = mode === "test" || section === "part1+2";
+  const trainerTimeKey = solveToCompletion
+    ? section === "part1+2"
+      ? `${selectedCaseId}:full`
+      : `${selectedCaseId}:test`
+    : selectedCaseId;
+  const trainerTimes = useTrainerTimes(trainerTimeKey);
 
   useEffect(() => {
     if (cases.some((cse) => cse.id === selectedCaseId)) return;
@@ -119,8 +123,8 @@ export function usePLLTrainer(
     [initialFacelets, userMoves],
   );
   const solved = useMemo(
-    () => section === "part1+2" && isSolved(virtualFacelets),
-    [section, virtualFacelets],
+    () => solveToCompletion && isSolved(virtualFacelets),
+    [solveToCompletion, virtualFacelets],
   );
 
   const algorithmMoves = useMemo(
@@ -132,7 +136,7 @@ export function usePLLTrainer(
 
   const sequence = useMoveSequence(
     algorithmMoves,
-    section === "part1+2" ? null : sequenceId,
+    solveToCompletion ? null : sequenceId,
     trainerMoveHistory,
     { ignoreLeadingFaces: ["U"] },
   );
@@ -141,7 +145,6 @@ export function usePLLTrainer(
     prevSerialRef.current = moveHistory.length > 0
       ? moveHistory[moveHistory.length - 1].serial
       : null;
-    freeAngleRotationRef.current = null;
     attemptStartedAtRef.current = null;
     recordedSequenceRef.current = null;
     setAutoRetryCountdownMs(null);
@@ -160,35 +163,15 @@ export function usePLLTrainer(
     prevSerialRef.current = newMoves[newMoves.length - 1].serial;
 
     const normalizedMoves = newMoves.map((record) => {
-      const baseMove = remapTrainerMove(record.move);
-      if (section === "part1+2") {
-        return {
-          ...record,
-          move: baseMove,
-        };
-      }
-
-      const lockedRotation = getTrainerFrameRotation(
-        baseMove,
-        algorithmMoves[0] ?? "",
-        freeAngleRotationRef.current,
-        gyroCurrentRef.current,
-        gyroResetRef.current,
-      );
-
-      if (freeAngleRotationRef.current === null && faceOf(baseMove) !== "U") {
-        freeAngleRotationRef.current = lockedRotation;
-      }
-
       return {
         ...record,
-        move: rotateMoveToCanonicalFrame(baseMove, lockedRotation),
+        move: remapTrainerMove(record.move),
       };
     });
 
     setTrainerMoveHistory((prev) => [...prev, ...normalizedMoves]);
     setUserMoves((prev) => [...prev, ...normalizedMoves.map((m) => m.move)]);
-  }, [moveHistory, gyroCurrentRef, gyroResetRef, algorithmMoves, section]);
+  }, [moveHistory]);
 
   useEffect(() => {
     if (trainerMoveHistory.length === 0 || attemptStartedAtRef.current !== null) return;
@@ -197,7 +180,7 @@ export function usePLLTrainer(
 
   useEffect(() => {
     if (
-      (section === "part1+2" ? !solved : sequence.state !== "done")
+      (solveToCompletion ? !solved : sequence.state !== "done")
       || attemptStartedAtRef.current === null
       || trainerMoveHistory.length === 0
       || recordedSequenceRef.current === sequenceId
@@ -207,12 +190,12 @@ export function usePLLTrainer(
 
     const finishedAt = trainerMoveHistory[trainerMoveHistory.length - 1].localTimestamp;
     const elapsed = Math.max(0, finishedAt - attemptStartedAtRef.current);
-    trainerTimes.addTime(section === "part1+2" ? `${selectedCase.id}:full` : selectedCase.id, elapsed);
+    trainerTimes.addTime(trainerTimeKey, elapsed);
     recordedSequenceRef.current = sequenceId;
-  }, [section, sequence.state, sequenceId, selectedCase.id, solved, trainerMoveHistory, trainerTimes]);
+  }, [sequence.state, sequenceId, solveToCompletion, solved, trainerMoveHistory, trainerTimeKey, trainerTimes]);
 
   const feedback: TrainerFeedbackState = useMemo(() => {
-    if (section === "part1+2") {
+    if (solveToCompletion) {
       if (solved) return "completed";
       return userMoves.length > 0 ? "in_progress" : "ready";
     }
@@ -228,9 +211,9 @@ export function usePLLTrainer(
       default:
         return "ready";
     }
-  }, [section, sequence.state, solved, userMoves.length]);
+  }, [sequence.state, solveToCompletion, solved, userMoves.length]);
 
-  const nextExpectedMove = section === "part1+2" || sequence.state === "done"
+  const nextExpectedMove = solveToCompletion || sequence.state === "done"
     ? null
     : algorithmMoves[sequence.currentIndex] ?? null;
   const recentTimes = useMemo(
@@ -285,7 +268,7 @@ export function usePLLTrainer(
   }, [alignmentMove, colorRotation, edgeVariant, mode, section, selectedCaseId]);
 
   useEffect(() => {
-    if (section === "part1+2" ? !solved : sequence.state !== "done") return;
+    if (solveToCompletion ? !solved : sequence.state !== "done") return;
 
     const startedAt = Date.now();
     const durationMs = 5000;
@@ -307,7 +290,7 @@ export function usePLLTrainer(
       window.clearTimeout(timeoutId);
       setAutoRetryCountdownMs(null);
     };
-  }, [section, sequence.state, solved, retryCase]);
+  }, [sequence.state, solveToCompletion, solved, retryCase]);
 
   const toggleAlgorithm = useCallback(() => {
     if (!revealAllowed) return;
@@ -419,90 +402,8 @@ function caseMatchesSection(cse: PLLTrainerCase, section: PLLTrainerSection): bo
   return section === "part2" ? cse.phase === "edges" : cse.phase === "corners";
 }
 
-function faceOf(move: string): string {
-  return move[0];
-}
-
-function getTrainerFrameRotation(
-  move: string,
-  expectedFirstMove: string,
-  lockedRotation: 0 | 1 | 2 | 3 | null,
-  gyroCurrent: RawQuaternion | null,
-  gyroReset: RawQuaternion | null,
-): 0 | 1 | 2 | 3 {
-  if (lockedRotation !== null) return lockedRotation;
-  if (faceOf(move) === "U") return 0;
-  const inferred = inferRotationFromMove(move, expectedFirstMove);
-  if (expectedFirstMove) return inferred ?? 0;
-
-  // Fall back to the current gyro frame only when the first move cannot
-  // determine orientation unambiguously.
-  return currentTrainerYawRotation(gyroCurrent, gyroReset);
-}
-
-function rotateMoveToCanonicalFrame(move: string, rotation: 0 | 1 | 2 | 3): string {
-  if (!move || rotation === 0) return move;
-
-  const face = move[0];
-  const suffix = move.slice(1);
-  const maps: Array<Record<string, string>> = [
-    { F: "F", R: "R", B: "B", L: "L", f: "f", r: "r", b: "b", l: "l" },
-    { F: "L", R: "F", B: "R", L: "B", f: "l", r: "f", b: "r", l: "b" },
-    { F: "B", R: "L", B: "F", L: "R", f: "b", r: "l", b: "f", l: "r" },
-    { F: "R", R: "B", B: "L", L: "F", f: "r", r: "b", b: "l", l: "f" },
-  ];
-
-  return `${maps[rotation][face] ?? face}${suffix}`;
-}
-
-const BASIS = new THREE.Quaternion(-Math.SQRT1_2, 0, 0, Math.SQRT1_2);
-const BASIS_INV = BASIS.clone().invert();
-const TRAINER_FRAME = new THREE.Quaternion(0, 0, 1, 0);
-const TRAINER_FRAME_INV = TRAINER_FRAME.clone().invert();
-const FORWARD = new THREE.Vector3(0, 0, 1);
-
-function ganToThree(q: RawQuaternion): THREE.Quaternion {
-  const ganQ = new THREE.Quaternion(q.x, q.y, q.z, q.w);
-  return BASIS.clone().multiply(ganQ).multiply(BASIS_INV);
-}
-
-function currentTrainerYawRotation(
-  gyroCurrent: RawQuaternion | null,
-  gyroReset: RawQuaternion | null,
-): 0 | 1 | 2 | 3 {
-  if (!gyroCurrent) return 0;
-
-  const current = ganToThree(gyroCurrent);
-  const target = gyroReset
-    ? ganToThree(gyroReset).invert().multiply(current)
-    : current;
-
-  target.premultiply(TRAINER_FRAME).multiply(TRAINER_FRAME_INV);
-  const forward = FORWARD.clone().applyQuaternion(target);
-  const angle = Math.atan2(forward.x, forward.z);
-  const quarterTurns = Math.round(angle / (Math.PI / 2));
-  return (((quarterTurns % 4) + 4) % 4) as 0 | 1 | 2 | 3;
-}
-
 function averageOfLast(records: Array<{ elapsed: number }>, count: number): number | null {
   if (records.length < count) return null;
   const window = records.slice(-count);
   return window.reduce((sum, record) => sum + record.elapsed, 0) / count;
-}
-
-function inferRotationFromMove(
-  actualMove: string,
-  expectedMove: string,
-): 0 | 1 | 2 | 3 | null {
-  if (!actualMove || !expectedMove) return null;
-
-  const expectedFace = faceOf(expectedMove);
-  const rotations: Array<0 | 1 | 2 | 3> = [0, 1, 2, 3];
-  for (const rotation of rotations) {
-    if (faceOf(rotateMoveToCanonicalFrame(actualMove, rotation)) === expectedFace) {
-      return rotation;
-    }
-  }
-
-  return null;
 }

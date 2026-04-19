@@ -21,7 +21,6 @@ export interface OLLTrainerStatus {
   cases: OLLTrainerCase[];
   selectedCase: OLLTrainerCase;
   virtualFacelets: string;
-  lastTrainerMove: MoveRecord | null;
   algorithmMoves: string[];
   topSolved: boolean;
   feedback: TrainerFeedbackState;
@@ -227,7 +226,6 @@ export function useOLLTrainer(
     cases,
     selectedCase,
     virtualFacelets,
-    lastTrainerMove: trainerMoveHistory[trainerMoveHistory.length - 1] ?? null,
     algorithmMoves,
     topSolved,
     feedback,

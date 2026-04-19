@@ -24,7 +24,6 @@ export interface PLLTrainerStatus {
   cases: PLLTrainerCase[];
   selectedCase: PLLTrainerCase;
   virtualFacelets: string;
-  lastTrainerMove: MoveRecord | null;
   algorithmMoves: string[];
   alignmentMove: string;
   feedback: TrainerFeedbackState;
@@ -238,7 +237,6 @@ export function usePLLTrainer(
     cases,
     selectedCase,
     virtualFacelets,
-    lastTrainerMove: trainerMoveHistory[trainerMoveHistory.length - 1] ?? null,
     algorithmMoves,
     alignmentMove,
     feedback,

@@ -5,6 +5,7 @@ import { useTimer } from "./hooks/useTimer";
 import { useSolveTimes } from "./hooks/useSolveTimes";
 import { useOLL } from "./hooks/useOLL";
 import { useOLLTrainer } from "./hooks/useOLLTrainer";
+import { useOLLTest } from "./hooks/useOLLTest";
 import { usePLL } from "./hooks/usePLL";
 import { usePLLTrainer } from "./hooks/usePLLTrainer";
 import { CubeViewport } from "./render/CubeViewport";
@@ -12,32 +13,39 @@ import { ScramblePanel } from "./ui/ScramblePanel";
 import { ScrambleDisplay } from "./ui/ScrambleDisplay";
 import { OLLDisplay } from "./ui/OLLDisplay";
 import { OLLTrainerDisplay } from "./ui/OLLTrainerDisplay";
+import { OLLTestDisplay } from "./ui/OLLTestDisplay";
 import { PLLDisplay } from "./ui/PLLDisplay";
 import { PLLTrainerDisplay } from "./ui/PLLTrainerDisplay";
 import { TimerDisplay } from "./ui/TimerDisplay";
 import { HistoryPanel } from "./ui/HistoryPanel";
 import { DebugPanel } from "./ui/DebugPanel";
 import { TrainerPanel } from "./ui/TrainerPanel";
+import { TestPanel } from "./ui/TestPanel";
 import { RawQuaternion } from "./bluetooth/ganCube";
+import { useTestTimes } from "./hooks/useTestTimes";
 
 export function App() {
-  const [mode, setMode] = useState<"solve" | "trainer">("solve");
+  const [mode, setMode] = useState<"solve" | "trainer" | "test">("solve");
   const [trainerType, setTrainerType] = useState<"oll" | "pll">("oll");
   const trainerGyroResetRef = useRef<RawQuaternion | null>(null);
   const cube = useCubeConnection();
   const trainerActive = mode === "trainer";
-  const helperMoveHistory = trainerActive ? [] : cube.moveHistory;
-  const helperFacelets = trainerActive ? null : cube.facelets;
-  const helperLastMove = trainerActive ? null : cube.lastMove;
-  const helperSolved = trainerActive ? false : cube.solved;
+  const testActive = mode === "test";
+  const helperTrackingDisabled = trainerActive || testActive;
+  const helperMoveHistory = helperTrackingDisabled ? [] : cube.moveHistory;
+  const helperFacelets = helperTrackingDisabled ? null : cube.facelets;
+  const helperLastMove = helperTrackingDisabled ? null : cube.lastMove;
+  const helperSolved = helperTrackingDisabled ? false : cube.solved;
 
   const scramble = useScramble(helperMoveHistory);
   const { times, addTime, clearAll, exportCSV } = useSolveTimes();
+  const testTimes = useTestTimes();
   const timer = useTimer(scramble.state, helperLastMove, helperSolved, addTime);
   const oll = useOLL(helperFacelets, helperMoveHistory);
   const pll = usePLL(helperFacelets, helperMoveHistory);
   const ollTrainer = useOLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const trainer = usePLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
+  const ollTest = useOLLTest(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const connected = cube.status.state === "connected";
   const connecting = cube.status.state === "connecting";
   const bluetoothSupported = typeof navigator !== "undefined" && "bluetooth" in navigator;
@@ -77,6 +85,14 @@ export function App() {
               aria-pressed={mode === "trainer"}
             >
               Train
+            </button>
+            <button
+              type="button"
+              className={mode === "test" ? "app__mode-button app__mode-button--active" : "app__mode-button"}
+              onClick={() => setMode("test")}
+              aria-pressed={mode === "test"}
+            >
+              Test
             </button>
           </div>
         </div>
@@ -122,6 +138,18 @@ export function App() {
             pllTrainer={trainer}
             ollTrainer={ollTrainer}
           />
+        ) : testActive ? (
+          <TestPanel
+            test={ollTest}
+            onResetGyro={() => {
+              if (cube.gyroCurrentRef.current) {
+                trainerGyroResetRef.current = { ...cube.gyroCurrentRef.current };
+              }
+            }}
+            times={testTimes.times}
+            onClear={testTimes.clearAll}
+            onExport={testTimes.exportCSV}
+          />
         ) : (
           <>
             <ScramblePanel scramble={scramble} solved={cube.solved} connected={connected} />
@@ -147,6 +175,18 @@ export function App() {
               {trainerType === "oll"
                 ? <OLLTrainerDisplay trainer={ollTrainer} />
                 : <PLLTrainerDisplay trainer={trainer} />}
+            </div>
+          </div>
+        ) : testActive ? (
+          <div className="app__viewport">
+            <CubeViewport
+              facelets={ollTest.virtualFacelets}
+              gyroCurrentRef={cube.gyroCurrentRef}
+              gyroResetRef={trainerGyroResetRef}
+              gyroFrame="yellow-top"
+            />
+            <div className="app__overlay-stack app__overlay-stack--trainer">
+              <OLLTestDisplay test={ollTest} />
             </div>
           </div>
         ) : (

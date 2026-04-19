@@ -18,119 +18,73 @@ function statusLabel(trainer: PLLTrainerStatus): string {
 }
 
 export function PLLTrainerDisplay({ trainer }: Props) {
-  const { sequence } = trainer;
-  const sectionLabel = trainer.section === "part1"
-    ? "PLL Part 1"
-    : trainer.section === "part2"
-      ? "PLL Part 2"
-      : "PLL Part 1 + 2";
-  const isTestMode = trainer.mode === "test";
-  const fullSolveMode = trainer.section === "part1+2" || isTestMode;
+  const topBarText = trainer.shownAlgorithm
+    ? trainer.algorithmMoves.join(" ")
+    : "Algorithm Hidden";
 
   return (
-    <div className="trainer-display">
-      <div className="trainer-display__header">
-        <div className="trainer-display__meta">
-          <div className="oll-display__phase">Algorithm Trainer · 2-Look PLL · {sectionLabel} · {isTestMode ? "Test" : "Learn"}</div>
-          <div className="oll-display__name">
-            {fullSolveMode
-              ? isTestMode ? "Solve Test" : `${trainer.selectedCase.displayName} - Full Solve`
-              : isTestMode ? "Recognition Test" : trainer.selectedCase.displayName}
-          </div>
-          <div className="oll-display__desc">
-            {fullSolveMode
-              ? isTestMode
-                ? "A PLL case is generated for you. Solve it using normal cube-solving rules, and the attempt completes when the cube is solved."
-                : "Start from this PLL state and solve the cube completely. Success means the virtual cube reaches solved."
-              : isTestMode
-              ? "Identify the case from the cube state and execute the correct algorithm from memory."
-              : trainer.selectedCase.description}
-          </div>
+    <div className="trainer-display trainer-display--hud">
+      <section className="trainer-hud__top">
+        <div className="trainer-hud__top-copy">
+          <div className="oll-display__phase">Algorithm Trainer - 2-Look PLL - Learn</div>
+          <div className="trainer-hud__top-algorithm mono">{topBarText}</div>
         </div>
-
         <div className={`trainer-badge trainer-badge--${trainer.feedback}`}>
           {statusLabel(trainer)}
         </div>
-      </div>
+      </section>
 
-      <div className="trainer-display__toolbar">
-        <button className="secondary" onClick={trainer.retryCase}>Retry</button>
-        <button className="secondary" onClick={trainer.nextCase}>Next</button>
-        <button className="secondary" onClick={trainer.randomCase}>Random</button>
-        {trainer.revealAllowed && (
-          <button className="secondary" onClick={trainer.toggleAlgorithm}>
+      <section className="trainer-hud__side trainer-hud__side--left">
+        <div className="trainer-hud__panel">
+          <div className="trainer-hud__label">Case</div>
+          <div className="trainer-hud__case-name">{trainer.selectedCase.displayName}</div>
+          <div className="trainer-hud__body-copy">{trainer.selectedCase.description}</div>
+        </div>
+
+        {trainer.feedback === "ready" && (
+          <div className="trainer-hud__message trainer-hud__message--hint">
+            Start from the shown PLL case and solve the cube normally. The attempt completes when the virtual cube is solved.
+          </div>
+        )}
+
+        {trainer.feedback === "in_progress" && (
+          <div className="trainer-hud__message trainer-hud__message--hint">
+            Keep going until the cube is fully solved.
+          </div>
+        )}
+      </section>
+
+      <section className="trainer-hud__side trainer-hud__side--right">
+        <div className="trainer-hud__actions">
+          <button className="app__mode-button trainer-hud__action-button" onClick={trainer.retryCase}>Retry</button>
+          <button className="app__mode-button trainer-hud__action-button" onClick={trainer.nextCase}>Next</button>
+          <button className="app__mode-button trainer-hud__action-button" onClick={trainer.randomCase}>Random</button>
+          <button className="app__mode-button trainer-hud__action-button" onClick={trainer.toggleAlgorithm}>
             {trainer.shownAlgorithm ? "Hide Algorithm" : "Show Algorithm"}
           </button>
-        )}
-      </div>
-
-      {trainer.revealAllowed && trainer.shownAlgorithm && !fullSolveMode ? (
-        <div className="oll-display__moves">
-          {formatPLLDisplayMoves(trainer.selectedCase.id, trainer.algorithmMoves).map(({ move, index, prefix, suffix }) => {
-            let cls = "scramble-move";
-            if (sequence.state === "done" || index < sequence.currentIndex) cls += " scramble-move--done";
-            else if (index === sequence.currentIndex) {
-              if (sequence.state === "error") cls += " scramble-move--error";
-              else if (sequence.state === "half-turn") cls += " scramble-move--half";
-              else cls += " scramble-move--current";
-            } else {
-              cls += " scramble-move--upcoming";
-            }
-            return <span key={`${move}-${index}`} className={cls}>{prefix}{move}{suffix}</span>;
-          })}
         </div>
-      ) : (
-        <div className="trainer-display__hidden">
-          {fullSolveMode
-            ? "Solve the generated PLL state to a solved cube. This mode follows cube state, not a fixed algorithm sequence."
-            : isTestMode
-            ? "Algorithm hidden. Recognize the case from the cube and solve it from memory."
-            : "Algorithm hidden. Try to recall it before turning."}
-        </div>
-      )}
 
-      {trainer.feedback === "ready" && (
-        <div className="scramble-display__hint">
-          {fullSolveMode
-            ? "Inspect the generated PLL state and finish the solve. The attempt completes when the virtual cube is solved."
-            : isTestMode
-            ? "Study the cube, identify the case, and start when ready."
-            : "Start turning on the smart cube. The trainer ignores the real cube state and only checks your move sequence."}
-        </div>
-      )}
-
-      {!fullSolveMode && !isTestMode && trainer.feedback === "in_progress" && trainer.nextExpectedMove && (
-        <div className="scramble-display__hint">
-          Expected next move: <strong>{trainer.nextExpectedMove}</strong>
-        </div>
-      )}
-
-      {!fullSolveMode && trainer.feedback === "incorrect" && sequence.errorCorrection && (
-        <div className="scramble-display__correction">
-          Wrong move - do <strong>{sequence.errorCorrection}</strong> to get back on track, or retry the case.
-        </div>
-      )}
-
-      {trainer.recentTimes.length > 0 && (
-        <div className="trainer-times__recent trainer-times__recent--inline">
-          <span className="trainer-times__recent-label">Recent</span>
-          <div className="moves">
-            {trainer.recentTimes.map((time, index) => (
-              <span key={`${time}-${index}`} className="move mono">{formatElapsed(time)}</span>
-            ))}
-          </div>
-          <div className="trainer-times__averages mono">
-            <span>ao5 <strong>{formatElapsed(trainer.averageOf5)}</strong></span>
-            <span>ao25 <strong>{formatElapsed(trainer.averageOf25)}</strong></span>
-            <span>ao50 <strong>{formatElapsed(trainer.averageOf50)}</strong></span>
-          </div>
-          {trainer.autoRetryCountdownMs != null && (
-            <div className="trainer-times__countdown mono">
-              Next retry in <strong>{formatCountdown(trainer.autoRetryCountdownMs)}</strong>
+        {trainer.recentTimes.length > 0 && (
+          <div className="trainer-hud__panel">
+            <div className="trainer-hud__label">Recent</div>
+            <div className="moves trainer-hud__times">
+              {trainer.recentTimes.map((time, index) => (
+                <span key={`${time}-${index}`} className="move mono">{formatElapsed(time)}</span>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+            <div className="trainer-times__averages mono">
+              <span>ao5 <strong>{formatElapsed(trainer.averageOf5)}</strong></span>
+              <span>ao25 <strong>{formatElapsed(trainer.averageOf25)}</strong></span>
+              <span>ao50 <strong>{formatElapsed(trainer.averageOf50)}</strong></span>
+            </div>
+            {trainer.autoRetryCountdownMs != null && (
+              <div className="trainer-times__countdown mono">
+                Next retry in <strong>{formatCountdown(trainer.autoRetryCountdownMs)}</strong>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -142,28 +96,4 @@ function formatElapsed(elapsed: number | null): string {
 
 function formatCountdown(elapsed: number): string {
   return `${(elapsed / 1000).toFixed(1)}s`;
-}
-
-function formatPLLDisplayMoves(caseId: string, moves: string[]) {
-  const prefixMap: Record<number, string> = {};
-  const suffixMap: Record<number, string> = {};
-
-  if (caseId === "corners-headlights") {
-    prefixMap[0] = "( ";
-    suffixMap[3] = " )";
-  }
-
-  if (caseId === "corners-no-headlights") {
-    prefixMap[9] = "( ";
-    suffixMap[12] = " )";
-    prefixMap[13] = "( ";
-    suffixMap[16] = " )";
-  }
-
-  return moves.map((move, index) => ({
-    move,
-    index,
-    prefix: prefixMap[index] ?? "",
-    suffix: suffixMap[index] ?? "",
-  }));
 }

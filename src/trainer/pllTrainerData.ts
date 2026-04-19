@@ -100,14 +100,10 @@ export function getPLLTrainerCase(caseId: string): PLLTrainerCase {
 }
 
 export function randomPLLTrainerCaseId(
-  section?: "part1" | "part2",
   excludeId?: string,
 ): string {
-  const filtered = section
-    ? PLL_TRAINER_CASES.filter((cse) => (section === "part1" ? cse.phase === "corners" : cse.phase === "edges"))
-    : PLL_TRAINER_CASES;
-  const pool = filtered.filter((cse) => cse.id !== excludeId);
-  const source = pool.length > 0 ? pool : filtered;
+  const pool = PLL_TRAINER_CASES.filter((cse) => cse.id !== excludeId);
+  const source = pool.length > 0 ? pool : PLL_TRAINER_CASES;
   return source[Math.floor(Math.random() * source.length)].id;
 }
 

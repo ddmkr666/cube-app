@@ -9,6 +9,48 @@ interface Props {
   ollTrainer: OLLTrainerStatus;
 }
 
+interface ToggleOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+interface ToggleGroupProps<T extends string> {
+  label: string;
+  value: T;
+  options: ToggleOption<T>[];
+  onChange: (value: T) => void;
+}
+
+function ToggleGroup<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: ToggleGroupProps<T>) {
+  return (
+    <div className="trainer-panel__field">
+      <span>{label}</span>
+      <div className="trainer-panel__toggle-group" role="group" aria-label={label}>
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className={
+              value === option.value
+                ? "trainer-panel__toggle trainer-panel__toggle--active"
+                : "trainer-panel__toggle"
+            }
+            onClick={() => onChange(option.value)}
+            aria-pressed={value === option.value}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function TrainerPanel({
   trainerType,
   onTrainerTypeChange,
@@ -21,30 +63,18 @@ export function TrainerPanel({
       <h3>Algorithm Trainer</h3>
 
       <div className="trainer-panel__body">
-        <label className="trainer-panel__field">
-          <span>Algorithm Set</span>
-          <select
-            value={trainerType}
-            onChange={(e) => onTrainerTypeChange(e.target.value as "oll" | "pll")}
-          >
-            <option value="oll">2-Look OLL</option>
-            <option value="pll">2-Look PLL</option>
-          </select>
-        </label>
+        <ToggleGroup
+          label="Algorithm Set"
+          value={trainerType}
+          onChange={onTrainerTypeChange}
+          options={[
+            { value: "oll", label: "2-Look OLL" },
+            { value: "pll", label: "2-Look PLL" },
+          ]}
+        />
 
         {trainerType === "oll" ? (
           <>
-            <label className="trainer-panel__field">
-              <span>OLL Section</span>
-              <select
-                value={ollTrainer.section}
-                onChange={(e) => ollTrainer.setSection(e.target.value as "part1" | "part2")}
-              >
-                <option value="part1">Part 1 - Edges</option>
-                <option value="part2">Part 2 - Corners</option>
-              </select>
-            </label>
-
             <label className="trainer-panel__field">
               <span>Case</span>
               <select
@@ -53,56 +83,28 @@ export function TrainerPanel({
               >
                 {ollTrainer.cases.map((cse) => (
                   <option key={cse.id} value={cse.id}>
-                    {cse.phase === "edges" ? "Edges" : "Corners"} - {cse.displayName}
+                    {cse.displayName}
                   </option>
                 ))}
               </select>
             </label>
 
-            <div className="facelets">
-              Learn mode is ready for OLL. Test mode can come later without changing the solve-step algorithms.
-            </div>
           </>
         ) : (
           <>
             <label className="trainer-panel__field">
-              <span>Trainer Mode</span>
+              <span>Case</span>
               <select
-                value={pllTrainer.mode}
-                onChange={(e) => pllTrainer.setMode(e.target.value as "learn" | "test")}
+                value={pllTrainer.selectedCase.id}
+                onChange={(e) => pllTrainer.selectCase(e.target.value)}
               >
-                <option value="learn">Learn</option>
-                <option value="test">Test</option>
+                {pllTrainer.cases.map((cse) => (
+                  <option key={cse.id} value={cse.id}>
+                    {cse.phase === "corners" ? "Corners" : "Edges"} - {cse.displayName}
+                  </option>
+                ))}
               </select>
             </label>
-
-            <label className="trainer-panel__field">
-              <span>PLL Section</span>
-              <select
-                value={pllTrainer.section}
-                onChange={(e) => pllTrainer.setSection(e.target.value as "part1" | "part2" | "part1+2")}
-              >
-                <option value="part1">Part 1 - Corners</option>
-                <option value="part2">Part 2 - Edges</option>
-                <option value="part1+2">Part 1 + 2 - Full PLL</option>
-              </select>
-            </label>
-
-            {pllTrainer.mode === "learn" && (
-              <label className="trainer-panel__field">
-                <span>Case</span>
-                <select
-                  value={pllTrainer.selectedCase.id}
-                  onChange={(e) => pllTrainer.selectCase(e.target.value)}
-                >
-                  {pllTrainer.cases.map((cse) => (
-                    <option key={cse.id} value={cse.id}>
-                      {cse.phase === "corners" ? "Corners" : "Edges"} - {cse.displayName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
           </>
         )}
 
@@ -110,7 +112,7 @@ export function TrainerPanel({
           Reset Trainer Gyro
         </button>
         <div className="facelets">
-          Hold the real cube with yellow on top and green in front, then reset the trainer gyro.
+          Hold the real cube white-side up with green in front, then reset the trainer gyro. Trainer mode still displays the virtual cube with yellow on top.
         </div>
       </div>
     </section>

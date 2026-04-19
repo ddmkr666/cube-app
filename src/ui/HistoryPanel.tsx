@@ -5,15 +5,23 @@ interface Props {
   times: SolveRecord[];
   onClear: () => void;
   onExport: (times: SolveRecord[]) => void;
+  title?: string;
+  emptyMessage?: string;
 }
 
-export function HistoryPanel({ times, onClear, onExport }: Props) {
+export function HistoryPanel({
+  times,
+  onClear,
+  onExport,
+  title = "Solve History",
+  emptyMessage = "No solves yet. Finish a scramble to record a time.",
+}: Props) {
   if (times.length === 0) {
     return (
       <div className="panel">
-        <h3>Solve History</h3>
+        <h3>{title}</h3>
         <p style={{ color: "var(--muted)", fontSize: 12, margin: 0 }}>
-          No solves yet. Finish a scramble to record a time.
+          {emptyMessage}
         </p>
       </div>
     );
@@ -28,7 +36,7 @@ export function HistoryPanel({ times, onClear, onExport }: Props) {
 
   return (
     <div className="panel">
-      <h3>Solve History</h3>
+      <h3>{title}</h3>
 
       <dl className="kv" style={{ marginBottom: 8 }}>
         <dt>Best</dt>

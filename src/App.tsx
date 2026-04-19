@@ -139,6 +139,7 @@ export function App() {
           <div className="app__viewport">
             <CubeViewport
               facelets={trainerType === "oll" ? ollTrainer.virtualFacelets : trainer.virtualFacelets}
+              lastMove={trainerType === "oll" ? ollTrainer.lastTrainerMove : trainer.lastTrainerMove}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={trainerGyroResetRef}
               gyroFrame="yellow-top"

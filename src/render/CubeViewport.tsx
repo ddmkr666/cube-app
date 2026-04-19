@@ -38,6 +38,9 @@ const _current = new THREE.Quaternion();
 const _ref = new THREE.Quaternion();
 const _target = new THREE.Quaternion();
 
+const TRAINER_FRAME = new THREE.Quaternion(0, 0, 1, 0);
+const TRAINER_FRAME_INV = TRAINER_FRAME.clone().invert();
+
 interface GyroRotatorProps {
   facelets: string;
   faceColors?: FaceColors;
@@ -46,9 +49,6 @@ interface GyroRotatorProps {
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
   gyroFrame: "standard" | "yellow-top";
 }
-
-const TRAINER_FRAME = new THREE.Quaternion(0, 0, 1, 0);
-const TRAINER_FRAME_INV = TRAINER_FRAME.clone().invert();
 
 /**
  * Wraps Cube3D in a group whose rotation tracks the physical cube's gyro.

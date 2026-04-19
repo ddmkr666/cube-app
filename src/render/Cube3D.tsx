@@ -144,7 +144,7 @@ export function Cube3D({ facelets, faceColors = FACE_COLORS, lastMove, highlight
   const latestFaceletsRef = useRef(facelets);
   const pendingFaceletsSyncRef = useRef<string | null>(null);
   const lastMoveAtRef = useRef(0);
-  const lastQueuedSerialRef = useRef<number | null>(null);
+  const lastQueuedSerialRef = useRef<number | null>(lastMove?.serial ?? null);
   const [renderFacelets, setRenderFacelets] = useState(facelets);
   // Kept in sync with renderFacelets each render so useFrame can read it without stale closure.
   const renderFaceletsRef = useRef(facelets);

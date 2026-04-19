@@ -136,18 +136,19 @@ export function App() {
       </aside>
       <main className="app__main">
         {trainerActive ? (
-          <>
-            {trainerType === "oll"
-              ? <OLLTrainerDisplay trainer={ollTrainer} />
-              : <PLLTrainerDisplay trainer={trainer} />}
+          <div className="app__viewport">
             <CubeViewport
               facelets={trainerType === "oll" ? ollTrainer.virtualFacelets : trainer.virtualFacelets}
-              lastMove={cube.lastMove}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={trainerGyroResetRef}
               gyroFrame="yellow-top"
             />
-          </>
+            <div className="app__overlay-stack app__overlay-stack--trainer">
+              {trainerType === "oll"
+                ? <OLLTrainerDisplay trainer={ollTrainer} />
+                : <PLLTrainerDisplay trainer={trainer} />}
+            </div>
+          </div>
         ) : (
           <div className="app__viewport">
             <CubeViewport

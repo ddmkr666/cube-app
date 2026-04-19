@@ -3,7 +3,6 @@ import { RawQuaternion } from "../bluetooth/ganCube";
 import { applyMovesToFacelets } from "../cube/moves";
 import { getInverseMove } from "../cube/scramble";
 import { MoveRecord } from "../cube/types";
-import { SequenceStatus, useMoveSequence } from "./useMoveSequence";
 import { useTrainerTimes } from "./useTrainerTimes";
 import {
   buildOLLTrainerFacelets,
@@ -14,7 +13,7 @@ import {
 } from "../trainer/ollTrainerData";
 
 export type TrainerFeedbackState = "ready" | "in_progress" | "incorrect" | "completed";
-export type OLLTrainerSection = "part1" | "part2";
+export type OLLTrainerSection = "part2";
 
 export interface OLLTrainerStatus {
   section: OLLTrainerSection;
@@ -23,8 +22,6 @@ export interface OLLTrainerStatus {
   selectedCase: OLLTrainerCase;
   virtualFacelets: string;
   algorithmMoves: string[];
-  sequence: SequenceStatus;
-  trackMoves: boolean;
   topSolved: boolean;
   feedback: TrainerFeedbackState;
   recentTimes: number[];
@@ -33,7 +30,6 @@ export interface OLLTrainerStatus {
   averageOf50: number | null;
   autoRetryCountdownMs: number | null;
   shownAlgorithm: boolean;
-  nextExpectedMove: string | null;
   selectCase: (caseId: string) => void;
   randomCase: () => void;
   nextCase: () => void;
@@ -47,8 +43,8 @@ export function useOLLTrainer(
   _gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>,
   _gyroResetRef: React.MutableRefObject<RawQuaternion | null>,
 ): OLLTrainerStatus {
-  const [section, setSection] = useState<OLLTrainerSection>("part1");
-  const [selectedCaseId, setSelectedCaseId] = useState<string>(() => randomOLLTrainerCaseId("part1"));
+  const [section, setSection] = useState<OLLTrainerSection>("part2");
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(() => randomOLLTrainerCaseId("part2"));
   const [shownAlgorithm, setShownAlgorithm] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [alignmentMove, setAlignmentMove] = useState<string>(() => randomAlignmentMove());
@@ -60,8 +56,8 @@ export function useOLLTrainer(
   const recordedSequenceRef = useRef<string | null>(null);
 
   const cases = useMemo(
-    () => OLL_TRAINER_CASES.filter((cse) => caseMatchesSection(cse, section)),
-    [section],
+    () => OLL_TRAINER_CASES.filter((cse) => cse.phase === "corners"),
+    [],
   );
 
   const selectedCase = useMemo(
@@ -91,16 +87,8 @@ export function useOLLTrainer(
     () => selectedCase.algorithm.split(" ").filter(Boolean),
     [selectedCase.algorithm],
   );
-  const trackMoves = selectedCase.trackMoves !== false;
 
   const sequenceId = `${selectedCase.id}:${attempt}`;
-
-  const sequence = useMoveSequence(
-    algorithmMoves,
-    trackMoves ? sequenceId : null,
-    trainerMoveHistory,
-    { ignoreLeadingFaces: ["U"] },
-  );
 
   useEffect(() => {
     prevSerialRef.current = moveHistory.length > 0
@@ -123,27 +111,14 @@ export function useOLLTrainer(
     if (newMoves.length === 0) return;
     prevSerialRef.current = newMoves[newMoves.length - 1].serial;
 
-    let projectedIndex = userMoves.length;
-    const normalizedMoves = newMoves.map((record) => {
-      const baseMove = remapTrainerMove(record.move);
-      const expectedMove = !trackMoves
-        ? algorithmMoves[projectedIndex]
-        : "";
-      const resolvedMove = !trackMoves && expectedMove && matchesMoveLoosely(baseMove, expectedMove)
-        ? expectedMove
-        : baseMove;
-
-      projectedIndex += 1;
-
-      return {
-        ...record,
-        move: resolvedMove,
-      };
-    });
+    const normalizedMoves = newMoves.map((record) => ({
+      ...record,
+      move: remapTrainerMove(record.move),
+    }));
 
     setTrainerMoveHistory((prev) => [...prev, ...normalizedMoves]);
     setUserMoves((prev) => [...prev, ...normalizedMoves.map((m) => m.move)]);
-  }, [moveHistory, algorithmMoves, trackMoves, userMoves.length]);
+  }, [moveHistory]);
 
   useEffect(() => {
     if (trainerMoveHistory.length === 0 || attemptStartedAtRef.current !== null) return;
@@ -155,7 +130,7 @@ export function useOLLTrainer(
 
   useEffect(() => {
     if (
-      (trackMoves ? sequence.state !== "done" : !topSolved)
+      !topSolved
       || attemptStartedAtRef.current === null
       || trainerMoveHistory.length === 0
       || recordedSequenceRef.current === sequenceId
@@ -167,30 +142,12 @@ export function useOLLTrainer(
     const elapsed = Math.max(0, finishedAt - attemptStartedAtRef.current);
     trainerTimes.addTime(selectedCase.id, elapsed);
     recordedSequenceRef.current = sequenceId;
-  }, [trackMoves, sequence.state, sequenceId, selectedCase.id, topSolved, trainerMoveHistory, trainerTimes]);
+  }, [sequenceId, selectedCase.id, topSolved, trainerMoveHistory, trainerTimes]);
 
   const feedback: TrainerFeedbackState = useMemo(() => {
-    if (!trackMoves) {
-      if (topSolved) return "completed";
-      return userMoves.length > 0 ? "in_progress" : "ready";
-    }
-
-    switch (sequence.state) {
-      case "error":
-        return "incorrect";
-      case "done":
-        return "completed";
-      case "running":
-      case "half-turn":
-        return userMoves.length > 0 ? "in_progress" : "ready";
-      default:
-        return "ready";
-    }
-  }, [trackMoves, sequence.state, topSolved, userMoves.length]);
-
-  const nextExpectedMove = !trackMoves || sequence.state === "done"
-    ? null
-    : algorithmMoves[sequence.currentIndex] ?? null;
+    if (topSolved) return "completed";
+    return userMoves.length > 0 ? "in_progress" : "ready";
+  }, [topSolved, userMoves.length]);
 
   const recentTimes = useMemo(
     () => trainerTimes.records.slice(-3).map((record) => record.elapsed).reverse(),
@@ -227,7 +184,7 @@ export function useOLLTrainer(
   }, [alignmentMove]);
 
   useEffect(() => {
-    if (trackMoves ? sequence.state !== "done" : !topSolved) return;
+    if (!topSolved) return;
 
     const startedAt = Date.now();
     const durationMs = 5000;
@@ -249,7 +206,7 @@ export function useOLLTrainer(
       window.clearTimeout(timeoutId);
       setAutoRetryCountdownMs(null);
     };
-  }, [trackMoves, sequence.state, topSolved, retryCase]);
+  }, [topSolved, retryCase]);
 
   const toggleAlgorithm = useCallback(() => {
     setShownAlgorithm((value) => !value);
@@ -270,8 +227,6 @@ export function useOLLTrainer(
     selectedCase,
     virtualFacelets,
     algorithmMoves,
-    sequence,
-    trackMoves,
     topSolved,
     feedback,
     recentTimes,
@@ -280,7 +235,6 @@ export function useOLLTrainer(
     averageOf50,
     autoRetryCountdownMs,
     shownAlgorithm,
-    nextExpectedMove,
     selectCase,
     randomCase,
     nextCase,
@@ -290,37 +244,21 @@ export function useOLLTrainer(
   };
 }
 
-function caseMatchesSection(cse: OLLTrainerCase, section: OLLTrainerSection): boolean {
-  return section === "part1" ? cse.phase === "edges" : cse.phase === "corners";
-}
-
-function remapTrainerMove(move: string): string {
-  if (!move) return move;
-
-  const face = move[0];
-  const suffix = move.slice(1);
-  const map: Record<string, string> = {
-    U: "D",
-    D: "U",
-    R: "L",
-    L: "R",
-    F: "F",
-    B: "B",
-    u: "d",
-    d: "u",
-    r: "l",
-    l: "r",
-    f: "f",
-    b: "b",
-  };
-
-  return `${map[face] ?? face}${suffix}`;
-}
-
 function averageOfLast(records: Array<{ elapsed: number }>, count: number): number | null {
   if (records.length < count) return null;
   const window = records.slice(-count);
   return window.reduce((sum, record) => sum + record.elapsed, 0) / count;
+}
+
+function remapTrainerMove(move: string): string {
+  if (!move) return move;
+  const face = move[0];
+  const suffix = move.slice(1);
+  const map: Record<string, string> = {
+    U: "D", D: "U", R: "L", L: "R", F: "F", B: "B",
+    u: "d", d: "u", r: "l", l: "r", f: "f", b: "b",
+  };
+  return `${map[face] ?? face}${suffix}`;
 }
 
 function randomAlignmentMove(exclude?: string): string {
@@ -328,12 +266,6 @@ function randomAlignmentMove(exclude?: string): string {
   const pool = options.filter((value) => value !== exclude);
   const source = pool.length > 0 ? pool : options;
   return source[Math.floor(Math.random() * source.length)];
-}
-
-function matchesMoveLoosely(actualMove: string, expectedMove: string): boolean {
-  if (!actualMove || !expectedMove) return false;
-  return actualMove[0].toUpperCase() === expectedMove[0].toUpperCase()
-    && actualMove.slice(1) === expectedMove.slice(1);
 }
 
 function isTopFaceSolved(facelets: string): boolean {

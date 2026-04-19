@@ -4,7 +4,6 @@ import { isSolved } from "../cube/facelets";
 import { MoveRecord } from "../cube/types";
 import { applyMovesToFacelets } from "../cube/moves";
 import { getInverseMove } from "../cube/scramble";
-import { SequenceStatus, useMoveSequence } from "./useMoveSequence";
 import { useTrainerTimes } from "./useTrainerTimes";
 import {
   buildPLLTrainerFacelets,
@@ -19,19 +18,14 @@ import {
 } from "../trainer/pllTrainerData";
 
 export type TrainerFeedbackState = "ready" | "in_progress" | "incorrect" | "completed";
-export type PLLTrainerSection = "part1" | "part2" | "part1+2";
-export type PLLTrainerMode = "learn" | "test";
 
 export interface PLLTrainerStatus {
-  mode: PLLTrainerMode;
-  section: PLLTrainerSection;
   iteration: number;
   cases: PLLTrainerCase[];
   selectedCase: PLLTrainerCase;
   virtualFacelets: string;
   algorithmMoves: string[];
   alignmentMove: string;
-  sequence: SequenceStatus;
   feedback: TrainerFeedbackState;
   recentTimes: number[];
   averageOf5: number | null;
@@ -39,15 +33,11 @@ export interface PLLTrainerStatus {
   averageOf50: number | null;
   autoRetryCountdownMs: number | null;
   shownAlgorithm: boolean;
-  revealAllowed: boolean;
-  nextExpectedMove: string | null;
   selectCase: (caseId: string) => void;
   randomCase: () => void;
   nextCase: () => void;
   retryCase: () => void;
   toggleAlgorithm: () => void;
-  setMode: (value: PLLTrainerMode) => void;
-  setSection: (value: PLLTrainerSection) => void;
 }
 
 export function usePLLTrainer(
@@ -55,9 +45,7 @@ export function usePLLTrainer(
   _gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>,
   _gyroResetRef: React.MutableRefObject<RawQuaternion | null>,
 ): PLLTrainerStatus {
-  const [mode, setMode] = useState<PLLTrainerMode>("learn");
-  const [section, setSection] = useState<PLLTrainerSection>("part1");
-  const [selectedCaseId, setSelectedCaseId] = useState<string>(() => randomPLLTrainerCaseId("part1"));
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(() => randomPLLTrainerCaseId());
   const [shownAlgorithm, setShownAlgorithm] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [userMoves, setUserMoves] = useState<string[]>([]);
@@ -69,10 +57,7 @@ export function usePLLTrainer(
   const prevSerialRef = useRef<number | null>(null);
   const attemptStartedAtRef = useRef<number | null>(null);
   const recordedSequenceRef = useRef<string | null>(null);
-  const cases = useMemo(
-    () => PLL_TRAINER_CASES.filter((cse) => caseMatchesSection(cse, section)),
-    [section],
-  );
+  const cases = useMemo(() => PLL_TRAINER_CASES, []);
 
   const selectedCase = useMemo(() => {
     const baseCase = getPLLTrainerCase(selectedCaseId);
@@ -80,13 +65,7 @@ export function usePLLTrainer(
       ? withPLLTrainerEdgeVariant(baseCase, edgeVariant)
       : baseCase;
   }, [selectedCaseId, edgeVariant]);
-  const revealAllowed = mode === "learn";
-  const solveToCompletion = mode === "test" || section === "part1+2";
-  const trainerTimeKey = solveToCompletion
-    ? section === "part1+2"
-      ? `${selectedCaseId}:full`
-      : `${selectedCaseId}:test`
-    : selectedCaseId;
+  const trainerTimeKey = selectedCaseId;
   const trainerTimes = useTrainerTimes(trainerTimeKey);
 
   useEffect(() => {
@@ -101,45 +80,25 @@ export function usePLLTrainer(
     setAttempt((value) => value + 1);
   }, [cases, selectedCaseId]);
 
-  useEffect(() => {
-    if (revealAllowed) {
-      setShownAlgorithm(true);
-      return;
-    }
-
-    setShownAlgorithm(false);
-  }, [revealAllowed]);
-
   const initialFacelets = useMemo(() => {
     const base = selectedCase.phase === "corners"
       ? buildPLLTrainerStartFacelets(selectedCase, edgeVariant)
       : buildPLLTrainerFacelets(selectedCase);
-    if (section === "part1+2") return base;
     const colorShifted = rotatePLLTrainerColorFrame(base, colorRotation);
     return alignmentMove ? applyMovesToFacelets(colorShifted, [getInverseMove(alignmentMove)]) : colorShifted;
-  }, [selectedCase, edgeVariant, colorRotation, alignmentMove, section]);
+  }, [selectedCase, edgeVariant, colorRotation, alignmentMove]);
   const virtualFacelets = useMemo(
     () => applyMovesToFacelets(initialFacelets, userMoves),
     [initialFacelets, userMoves],
   );
-  const solved = useMemo(
-    () => solveToCompletion && isSolved(virtualFacelets),
-    [solveToCompletion, virtualFacelets],
-  );
+  const solved = useMemo(() => isSolved(virtualFacelets), [virtualFacelets]);
 
   const algorithmMoves = useMemo(
-    () => section === "part1+2" ? [] : selectedCase.algorithm.split(" ").filter(Boolean),
-    [selectedCase.algorithm, section],
+    () => selectedCase.algorithm.split(" ").filter(Boolean),
+    [selectedCase.algorithm],
   );
 
   const sequenceId = `${selectedCase.id}:${attempt}`;
-
-  const sequence = useMoveSequence(
-    algorithmMoves,
-    solveToCompletion ? null : sequenceId,
-    trainerMoveHistory,
-    { ignoreLeadingFaces: ["U"] },
-  );
 
   useEffect(() => {
     prevSerialRef.current = moveHistory.length > 0
@@ -162,12 +121,10 @@ export function usePLLTrainer(
     if (newMoves.length === 0) return;
     prevSerialRef.current = newMoves[newMoves.length - 1].serial;
 
-    const normalizedMoves = newMoves.map((record) => {
-      return {
-        ...record,
-        move: remapTrainerMove(record.move),
-      };
-    });
+    const normalizedMoves = newMoves.map((record) => ({
+      ...record,
+      move: remapTrainerMove(record.move),
+    }));
 
     setTrainerMoveHistory((prev) => [...prev, ...normalizedMoves]);
     setUserMoves((prev) => [...prev, ...normalizedMoves.map((m) => m.move)]);
@@ -180,7 +137,7 @@ export function usePLLTrainer(
 
   useEffect(() => {
     if (
-      (solveToCompletion ? !solved : sequence.state !== "done")
+      !solved
       || attemptStartedAtRef.current === null
       || trainerMoveHistory.length === 0
       || recordedSequenceRef.current === sequenceId
@@ -192,30 +149,12 @@ export function usePLLTrainer(
     const elapsed = Math.max(0, finishedAt - attemptStartedAtRef.current);
     trainerTimes.addTime(trainerTimeKey, elapsed);
     recordedSequenceRef.current = sequenceId;
-  }, [sequence.state, sequenceId, solveToCompletion, solved, trainerMoveHistory, trainerTimeKey, trainerTimes]);
+  }, [solved, sequenceId, trainerMoveHistory, trainerTimeKey, trainerTimes]);
 
   const feedback: TrainerFeedbackState = useMemo(() => {
-    if (solveToCompletion) {
-      if (solved) return "completed";
-      return userMoves.length > 0 ? "in_progress" : "ready";
-    }
-
-    switch (sequence.state) {
-      case "error":
-        return "incorrect";
-      case "done":
-        return "completed";
-      case "running":
-      case "half-turn":
-        return userMoves.length > 0 ? "in_progress" : "ready";
-      default:
-        return "ready";
-    }
-  }, [sequence.state, solveToCompletion, solved, userMoves.length]);
-
-  const nextExpectedMove = solveToCompletion || sequence.state === "done"
-    ? null
-    : algorithmMoves[sequence.currentIndex] ?? null;
+    if (solved) return "completed";
+    return userMoves.length > 0 ? "in_progress" : "ready";
+  }, [solved, userMoves.length]);
   const recentTimes = useMemo(
     () => trainerTimes.records.slice(-3).map((record) => record.elapsed).reverse(),
     [trainerTimes.records],
@@ -225,50 +164,47 @@ export function usePLLTrainer(
   const averageOf50 = useMemo(() => averageOfLast(trainerTimes.records, 50), [trainerTimes.records]);
 
   const selectCase = useCallback((caseId: string) => {
-    if (mode === "test") return;
     const baseCase = getPLLTrainerCase(caseId);
     setSelectedCaseId(caseId);
-    setColorRotation(section === "part1+2" ? 0 : randomColorRotation());
-    setAlignmentMove(section === "part1+2" ? "" : randomAlignmentMove(baseCase.phase));
+    setColorRotation(randomColorRotation());
+    setAlignmentMove(randomAlignmentMove(baseCase.phase));
     setEdgeVariant(randomEdgeVariant(baseCase.phase));
     setAttempt((value) => value + 1);
-  }, [mode, section]);
+  }, []);
 
   const randomCase = useCallback(() => {
-    const nextId = randomPLLTrainerCaseId(section === "part2" ? "part2" : "part1", selectedCaseId);
+    const nextId = randomPLLTrainerCaseId(selectedCaseId);
     const baseCase = getPLLTrainerCase(nextId);
     setSelectedCaseId(nextId);
-    setColorRotation(section === "part1+2" ? 0 : randomColorRotation());
-    setAlignmentMove(section === "part1+2" ? "" : randomAlignmentMove(baseCase.phase));
+    setColorRotation(randomColorRotation());
+    setAlignmentMove(randomAlignmentMove(baseCase.phase));
     setEdgeVariant(randomEdgeVariant(baseCase.phase));
     setAttempt((value) => value + 1);
-  }, [section, selectedCaseId]);
+  }, [selectedCaseId]);
 
   const nextCase = useCallback(() => {
     const index = cases.findIndex((cse) => cse.id === selectedCaseId);
     const nextId = cases[(index + 1 + cases.length) % cases.length].id;
     const baseCase = getPLLTrainerCase(nextId);
     setSelectedCaseId(nextId);
-    setColorRotation(section === "part1+2" ? 0 : randomColorRotation());
-    setAlignmentMove(section === "part1+2" ? "" : randomAlignmentMove(baseCase.phase));
+    setColorRotation(randomColorRotation());
+    setAlignmentMove(randomAlignmentMove(baseCase.phase));
     setEdgeVariant(randomEdgeVariant(baseCase.phase));
     setAttempt((value) => value + 1);
-  }, [cases, section, selectedCaseId]);
+  }, [cases, selectedCaseId]);
 
   const retryCase = useCallback(() => {
-    const nextId = mode === "test"
-      ? randomPLLTrainerCaseId(section === "part2" ? "part2" : "part1", selectedCaseId)
-      : selectedCaseId;
+    const nextId = selectedCaseId;
     const baseCase = getPLLTrainerCase(nextId);
     setSelectedCaseId(nextId);
-    setColorRotation(section === "part1+2" ? 0 : randomColorRotation(colorRotation));
-    setAlignmentMove(section === "part1+2" ? "" : randomAlignmentMove(baseCase.phase, alignmentMove));
+    setColorRotation(randomColorRotation(colorRotation));
+    setAlignmentMove(randomAlignmentMove(baseCase.phase, alignmentMove));
     setEdgeVariant(randomEdgeVariant(baseCase.phase, edgeVariant));
     setAttempt((value) => value + 1);
-  }, [alignmentMove, colorRotation, edgeVariant, mode, section, selectedCaseId]);
+  }, [alignmentMove, colorRotation, edgeVariant, selectedCaseId]);
 
   useEffect(() => {
-    if (solveToCompletion ? !solved : sequence.state !== "done") return;
+    if (!solved) return;
 
     const startedAt = Date.now();
     const durationMs = 5000;
@@ -290,45 +226,19 @@ export function usePLLTrainer(
       window.clearTimeout(timeoutId);
       setAutoRetryCountdownMs(null);
     };
-  }, [sequence.state, solveToCompletion, solved, retryCase]);
+  }, [solved, retryCase]);
 
   const toggleAlgorithm = useCallback(() => {
-    if (!revealAllowed) return;
     setShownAlgorithm((value) => !value);
-  }, [revealAllowed]);
-
-  const updateMode = useCallback((value: PLLTrainerMode) => {
-    setMode(value);
-    const nextId = randomPLLTrainerCaseId(section === "part2" ? "part2" : "part1");
-    const baseCase = getPLLTrainerCase(nextId);
-    setSelectedCaseId(nextId);
-    setColorRotation(section === "part1+2" ? 0 : randomColorRotation());
-    setAlignmentMove(section === "part1+2" ? "" : randomAlignmentMove(baseCase.phase));
-    setEdgeVariant(randomEdgeVariant(baseCase.phase));
-    setAttempt((current) => current + 1);
-  }, [section]);
-
-  const updateSection = useCallback((value: PLLTrainerSection) => {
-    const nextId = randomPLLTrainerCaseId(value === "part2" ? "part2" : "part1");
-    const baseCase = getPLLTrainerCase(nextId);
-    setSection(value);
-    setSelectedCaseId(nextId);
-    setColorRotation(value === "part1+2" ? 0 : randomColorRotation());
-    setAlignmentMove(value === "part1+2" ? "" : randomAlignmentMove(baseCase.phase));
-    setEdgeVariant(randomEdgeVariant(baseCase.phase));
-    setAttempt((current) => current + 1);
   }, []);
 
   return {
-    mode,
-    section,
     iteration: attempt,
     cases,
     selectedCase,
     virtualFacelets,
     algorithmMoves,
     alignmentMove,
-    sequence,
     feedback,
     recentTimes,
     averageOf5,
@@ -336,16 +246,23 @@ export function usePLLTrainer(
     averageOf50,
     autoRetryCountdownMs,
     shownAlgorithm,
-    revealAllowed,
-    nextExpectedMove,
     selectCase,
     randomCase,
     nextCase,
     retryCase,
     toggleAlgorithm,
-    setMode: updateMode,
-    setSection: updateSection,
   };
+}
+
+function remapTrainerMove(move: string): string {
+  if (!move) return move;
+  const face = move[0];
+  const suffix = move.slice(1);
+  const map: Record<string, string> = {
+    U: "D", D: "U", R: "L", L: "R", F: "F", B: "B",
+    u: "d", d: "u", r: "l", l: "r", f: "f", b: "b",
+  };
+  return `${map[face] ?? face}${suffix}`;
 }
 
 function randomColorRotation(exclude?: 0 | 1 | 2 | 3): 0 | 1 | 2 | 3 {
@@ -373,33 +290,6 @@ function randomEdgeVariant(_phase: "corners" | "edges", exclude?: number[]): num
     !exclude || variant.some((value, index) => value !== exclude[index]));
   const source = pool.length > 0 ? pool : sourceSet;
   return [...source[Math.floor(Math.random() * source.length)]];
-}
-
-function remapTrainerMove(move: string): string {
-  if (!move) return move;
-
-  const face = move[0];
-  const suffix = move.slice(1);
-  const map: Record<string, string> = {
-    U: "D",
-    D: "U",
-    R: "L",
-    L: "R",
-    F: "F",
-    B: "B",
-    u: "d",
-    d: "u",
-    r: "l",
-    l: "r",
-    f: "f",
-    b: "b",
-  };
-
-  return `${map[face] ?? face}${suffix}`;
-}
-
-function caseMatchesSection(cse: PLLTrainerCase, section: PLLTrainerSection): boolean {
-  return section === "part2" ? cse.phase === "edges" : cse.phase === "corners";
 }
 
 function averageOfLast(records: Array<{ elapsed: number }>, count: number): number | null {

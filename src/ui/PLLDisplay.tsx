@@ -11,7 +11,7 @@ export function PLLDisplay({ pll }: Props) {
 
   const { state, currentIndex, errorCorrection } = sequence;
   const { case: cse } = recognition;
-  const usesSliceMoves = moves.some((move) => /^[MES]/i.test(move));
+  const usesRotations = moves.some((move) => /^[xyz]/i.test(move));
 
   return (
     <div className="oll-display">
@@ -52,8 +52,8 @@ export function PLLDisplay({ pll }: Props) {
 
       {!trackable && (
         <div className="scramble-display__hint">
-          {usesSliceMoves
-            ? "This PLL uses slice moves (M/E/S). GAN move events only report U/R/F/D/L/B turns, so slice moves cannot be tracked move-by-move."
+          {usesRotations
+            ? "This PLL uses whole-cube rotations (x/y/z), which solve mode does not verify move-by-move yet."
             : "This PLL uses moves the smart-cube tracker cannot verify move-by-move."}
         </div>
       )}

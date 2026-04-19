@@ -69,6 +69,9 @@ function parseMoveAnimation(move: string) {
     case "d": axis = "y"; sign = -1; layers = (coord) => coord <= 0; break;
     case "f": axis = "z"; sign = 1; layers = (coord) => coord >= 0; break;
     case "b": axis = "z"; sign = -1; layers = (coord) => coord <= 0; break;
+    case "M": axis = "x"; sign = -1; layers = (coord) => coord === 0; break;
+    case "E": axis = "y"; sign = -1; layers = (coord) => coord === 0; break;
+    case "S": axis = "z"; sign = 1; layers = (coord) => coord === 0; break;
     case "x": axis = "x"; sign = 1; layers = () => true; break;
     case "y": axis = "y"; sign = 1; layers = () => true; break;
     case "z": axis = "z"; sign = 1; layers = () => true; break;

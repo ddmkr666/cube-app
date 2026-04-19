@@ -3,18 +3,14 @@ import { useCubeConnection } from "./hooks/useCubeConnection";
 import { useScramble } from "./hooks/useScramble";
 import { useTimer } from "./hooks/useTimer";
 import { useSolveTimes } from "./hooks/useSolveTimes";
-import { useOLL } from "./hooks/useOLL";
 import { useOLLTrainer } from "./hooks/useOLLTrainer";
 import { useOLLTest } from "./hooks/useOLLTest";
-import { usePLL } from "./hooks/usePLL";
 import { usePLLTrainer } from "./hooks/usePLLTrainer";
 import { CubeViewport } from "./render/CubeViewport";
 import { ScramblePanel } from "./ui/ScramblePanel";
 import { ScrambleDisplay } from "./ui/ScrambleDisplay";
-import { OLLDisplay } from "./ui/OLLDisplay";
 import { OLLTrainerDisplay } from "./ui/OLLTrainerDisplay";
 import { OLLTestDisplay } from "./ui/OLLTestDisplay";
-import { PLLDisplay } from "./ui/PLLDisplay";
 import { PLLTrainerDisplay } from "./ui/PLLTrainerDisplay";
 import { TimerDisplay } from "./ui/TimerDisplay";
 import { HistoryPanel } from "./ui/HistoryPanel";
@@ -23,26 +19,29 @@ import { TrainerPanel } from "./ui/TrainerPanel";
 import { TestPanel } from "./ui/TestPanel";
 import { RawQuaternion } from "./bluetooth/ganCube";
 import { useTestTimes } from "./hooks/useTestTimes";
+import { useSolveMoveHistory } from "./hooks/useSolveMoveHistory";
 
 export function App() {
   const [mode, setMode] = useState<"solve" | "trainer" | "test">("solve");
   const [trainerType, setTrainerType] = useState<"oll" | "pll">("oll");
   const trainerGyroResetRef = useRef<RawQuaternion | null>(null);
   const cube = useCubeConnection();
+  const solveTracking = useSolveMoveHistory(
+    cube.facelets,
+    cube.faceletSerial,
+    cube.faceletTimestamp,
+  );
   const trainerActive = mode === "trainer";
   const testActive = mode === "test";
   const helperTrackingDisabled = trainerActive || testActive;
-  const helperMoveHistory = helperTrackingDisabled ? [] : cube.moveHistory;
-  const helperFacelets = helperTrackingDisabled ? null : cube.facelets;
-  const helperLastMove = helperTrackingDisabled ? null : cube.lastMove;
+  const helperMoveHistory = helperTrackingDisabled ? [] : solveTracking.moveHistory;
+  const helperLastMove = helperTrackingDisabled ? null : solveTracking.lastMove;
   const helperSolved = helperTrackingDisabled ? false : cube.solved;
 
   const scramble = useScramble(helperMoveHistory);
   const { times, addTime, clearAll, exportCSV } = useSolveTimes();
   const testTimes = useTestTimes();
   const timer = useTimer(scramble.state, helperLastMove, helperSolved, addTime);
-  const oll = useOLL(helperFacelets, helperMoveHistory);
-  const pll = usePLL(helperFacelets, helperMoveHistory);
   const ollTrainer = useOLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const trainer = usePLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const ollTest = useOLLTest(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
@@ -193,14 +192,11 @@ export function App() {
           <div className="app__viewport">
             <CubeViewport
               facelets={cube.facelets}
-              lastMove={cube.lastMove}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={cube.gyroResetRef}
             />
             <div className="app__overlay-stack">
               {showScramble && <ScrambleDisplay scramble={scramble} />}
-              {!showScramble && pll.active && <PLLDisplay pll={pll} />}
-              {!showScramble && !pll.active && oll.active && <OLLDisplay oll={oll} />}
               {showTimer && <TimerDisplay phase={timer.phase} elapsed={timer.elapsed} />}
             </div>
           </div>

@@ -140,7 +140,7 @@ export function useOLL(
   );
 
   const trackable = useMemo(
-    () => moves.every((move) => !/^[MESxyz]/i.test(move)),
+    () => moves.every((move) => !/^[xyz]/i.test(move)),
     [moves],
   );
 

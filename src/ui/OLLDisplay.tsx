@@ -16,8 +16,7 @@ export function OLLDisplay({ oll }: Props) {
 
   const { state, currentIndex, errorCorrection } = sequence;
   const { case: cse } = recognition;
-  const usesSliceMoves = moves.some((move) => /^[MES]/i.test(move));
-  const usesWideMoves = moves.some((move) => /^[rludfb]/.test(move));
+  const usesRotations = moves.some((move) => /^[xyz]/i.test(move));
 
   return (
     <div className="oll-display">
@@ -58,11 +57,9 @@ export function OLLDisplay({ oll }: Props) {
 
       {!trackable && (
         <div className="scramble-display__hint">
-          {usesSliceMoves
-            ? "This OLL uses slice moves (M/E/S). GAN move events only report U/R/F/D/L/B turns, so slice moves cannot be tracked move-by-move."
-            : usesWideMoves
-              ? "This OLL uses wide moves. The app can usually follow them, but some cubes may report them inconsistently."
-              : "This OLL uses moves the smart-cube tracker cannot verify move-by-move."}
+          {usesRotations
+            ? "This OLL uses whole-cube rotations (x/y/z), which solve mode does not verify move-by-move yet."
+            : "This OLL uses moves the smart-cube tracker cannot verify move-by-move."}
         </div>
       )}
 

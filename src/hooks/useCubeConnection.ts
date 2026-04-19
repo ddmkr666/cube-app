@@ -8,6 +8,8 @@ const MAX_MOVE_HISTORY = 64;
 export interface CubeConnectionState {
   status: ConnectionStatus;
   facelets: string;
+  faceletSerial: number | null;
+  faceletTimestamp: number | null;
   lastMove: MoveRecord | null;
   moveHistory: MoveRecord[];
   solved: boolean;
@@ -35,6 +37,8 @@ export function useCubeConnection(): CubeConnectionState {
 
   const [status, setStatus] = useState<ConnectionStatus>({ state: "disconnected" });
   const [facelets, setFacelets] = useState<string>(SOLVED_FACELETS);
+  const [faceletSerial, setFaceletSerial] = useState<number | null>(null);
+  const [faceletTimestamp, setFaceletTimestamp] = useState<number | null>(null);
   const [lastMove, setLastMove] = useState<MoveRecord | null>(null);
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
 
@@ -44,7 +48,11 @@ export function useCubeConnection(): CubeConnectionState {
       gyroCurrentRef.current = q;
     });
     const s2 = service.updates$.subscribe((u) => {
-      if (u.facelets) setFacelets(u.facelets);
+      if (u.facelets) {
+        setFacelets(u.facelets.value);
+        setFaceletSerial(u.facelets.serial);
+        setFaceletTimestamp(u.facelets.localTimestamp);
+      }
       if (u.lastMove) {
         const rec: MoveRecord = {
           move: u.lastMove.move,
@@ -74,6 +82,8 @@ export function useCubeConnection(): CubeConnectionState {
   return {
     status,
     facelets,
+    faceletSerial,
+    faceletTimestamp,
     lastMove,
     moveHistory,
     solved: isSolved(facelets),

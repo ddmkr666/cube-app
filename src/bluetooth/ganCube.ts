@@ -59,7 +59,7 @@ export interface RawQuaternion {
 }
 
 export interface CubeUpdate {
-  facelets?: FaceletString;
+  facelets?: { value: FaceletString; serial: number; localTimestamp: number };
   lastMove?: { move: string; serial: number; localTimestamp: number };
 }
 
@@ -77,6 +77,9 @@ export interface CubeUpdate {
 export class GanCubeService {
   private connection: GanCubeConnection | null = null;
   private sub: Subscription | null = null;
+  private gyroFaceletsTimer: number | null = null;
+  private faceletsRequestInFlight = false;
+  private suppressGyroFaceletsUntil = 0;
 
   readonly updates$ = new Subject<CubeUpdate>();
   readonly status$ = new Subject<ConnectionStatus>();
@@ -113,6 +116,10 @@ export class GanCubeService {
   async disconnect(): Promise<void> {
     this.sub?.unsubscribe();
     this.sub = null;
+    if (this.gyroFaceletsTimer !== null) {
+      window.clearTimeout(this.gyroFaceletsTimer);
+      this.gyroFaceletsTimer = null;
+    }
     try {
       await this.connection?.disconnect();
     } catch {
@@ -124,7 +131,13 @@ export class GanCubeService {
 
   async requestFacelets(): Promise<void> {
     if (!this.connection) return;
-    await this.connection.sendCubeCommand({ type: "REQUEST_FACELETS" });
+    if (this.faceletsRequestInFlight) return;
+    this.faceletsRequestInFlight = true;
+    try {
+      await this.connection.sendCubeCommand({ type: "REQUEST_FACELETS" });
+    } finally {
+      this.faceletsRequestInFlight = false;
+    }
   }
 
   /**
@@ -137,6 +150,13 @@ export class GanCubeService {
    */
   async markSolved(): Promise<void> {
     if (!this.connection) return;
+    if (this.gyroFaceletsTimer !== null) {
+      window.clearTimeout(this.gyroFaceletsTimer);
+      this.gyroFaceletsTimer = null;
+    }
+    // Prevent the solve-mode gyro polling added on this branch from racing the
+    // reset command and its immediate follow-up facelet request.
+    this.suppressGyroFaceletsUntil = performance.now() + 600;
     await this.connection.sendCubeCommand({ type: "REQUEST_RESET" });
     await this.connection.sendCubeCommand({ type: "REQUEST_FACELETS" });
   }
@@ -145,10 +165,20 @@ export class GanCubeService {
     switch (evt.type) {
       case "FACELETS":
         if (evt.facelets.length === 54) {
-          this.updates$.next({ facelets: evt.facelets });
+          this.updates$.next({
+            facelets: {
+              value: evt.facelets,
+              serial: evt.serial,
+              localTimestamp: performance.now(),
+            },
+          });
         }
         return;
       case "MOVE":
+        if (this.gyroFaceletsTimer !== null) {
+          window.clearTimeout(this.gyroFaceletsTimer);
+          this.gyroFaceletsTimer = null;
+        }
         this.updates$.next({
           lastMove: {
             move: evt.move,
@@ -162,13 +192,34 @@ export class GanCubeService {
         return;
       case "GYRO":
         this.gyro$.next(evt.quaternion);
+        this.scheduleFaceletRefreshFromGyro();
         return;
       case "DISCONNECT":
+        if (this.gyroFaceletsTimer !== null) {
+          window.clearTimeout(this.gyroFaceletsTimer);
+          this.gyroFaceletsTimer = null;
+        }
         this.connection = null;
         this.status$.next({ state: "disconnected" });
         return;
       default:
         return;
     }
+  }
+
+  private scheduleFaceletRefreshFromGyro() {
+    if (!this.connection) return;
+    if (performance.now() < this.suppressGyroFaceletsUntil) return;
+
+    if (this.gyroFaceletsTimer !== null) {
+      window.clearTimeout(this.gyroFaceletsTimer);
+    }
+
+    // Wide and slice turns can show up as gyro-only activity on some cubes.
+    // A short debounce keeps solve-mode facelets fresh without spamming BLE writes.
+    this.gyroFaceletsTimer = window.setTimeout(() => {
+      this.gyroFaceletsTimer = null;
+      void this.requestFacelets();
+    }, 140);
   }
 }

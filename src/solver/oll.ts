@@ -5,6 +5,7 @@
  */
 import { FaceletString } from "../cube/types";
 import { FACELET_GEOMETRY } from "../cube/geometry";
+import { applyMoveToFacelets } from "../cube/moves";
 
 export type OLLPhase = "edges" | "corners" | "done";
 
@@ -57,6 +58,31 @@ const ORIENTATION_MAPS: number[][] = (() => {
   }
   return maps;
 })();
+
+const MOVE_REFERENCE_FACELETS =
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr" as FaceletString;
+const TRACKABLE_MOVES = [
+  "U", "U'", "U2",
+  "R", "R'", "R2",
+  "F", "F'", "F2",
+  "D", "D'", "D2",
+  "L", "L'", "L2",
+  "B", "B'", "B2",
+  "u", "u'", "u2",
+  "r", "r'", "r2",
+  "f", "f'", "f2",
+  "d", "d'", "d2",
+  "l", "l'", "l2",
+  "b", "b'", "b2",
+  "M", "M'", "M2",
+  "E", "E'", "E2",
+  "S", "S'", "S2",
+  "x", "x'", "x2",
+  "y", "y'", "y2",
+  "z", "z'", "z2",
+] as const;
+const orientationMoveCache = new Map<string, string>();
+const conjugatedMoveCache = new Map<string, string>();
 
 function remapFacelets(f: FaceletString, map: number[]): FaceletString {
   let out = "";
@@ -156,58 +182,51 @@ export function getAllF2LOrientedFacelets(
  * a physical 'R' move should be returned as 'U'.
  */
 export function remapMove(move: string, orientationIndex: number): string {
-  const face = move[0];
-  const suffix = move.slice(1);
-  const upperFace = face.toUpperCase();
-  const preserveCase = (nextFace: string) => (
-    face === upperFace ? nextFace : nextFace.toLowerCase()
-  );
-  
-  // Find which physical face matches each standard face in this orientation.
-  // We can look at the center facelets (index 4 of each face block).
-  const standardCenters = [4, 13, 22, 31, 40, 49]; // U, R, F, D, L, B
   const map = ORIENTATION_MAPS[orientationIndex];
-  
-  // The facelet at standard index 4 (U center) was originally at index map[4].
-  const faceIndex = ["U", "R", "F", "D", "L", "B"].indexOf(upperFace);
-  if (faceIndex === -1) return move;
-  const physicalCenterIndex = standardCenters[faceIndex];
-  
-  // We need to find which "virtual" face the physical move corresponds to.
-  // A physical 'F' move is a rotation around the physical 'F' axis.
-  // We need to know which virtual face has its center at that physical center.
-  for (let virtualFaceIdx = 0; virtualFaceIdx < 6; virtualFaceIdx++) {
-    const targetIdx = standardCenters[virtualFaceIdx];
-    if (map[targetIdx] === physicalCenterIndex) {
-      return preserveCase(["U", "R", "F", "D", "L", "B"][virtualFaceIdx]) + suffix;
-    }
-  }
-  
-  return move;
+  if (!map) return move;
+  const cacheKey = `${orientationIndex}:${move}`;
+  const cached = orientationMoveCache.get(cacheKey);
+  if (cached) return cached;
+
+  const remappedReference = remapFacelets(MOVE_REFERENCE_FACELETS, map);
+  const remappedTarget = remapFacelets(applyMoveToFacelets(MOVE_REFERENCE_FACELETS, move), map);
+  const mappedMove = TRACKABLE_MOVES.find(
+    (candidate) => applyMoveToFacelets(remappedReference, candidate) === remappedTarget,
+  ) ?? move;
+
+  orientationMoveCache.set(cacheKey, mappedMove);
+  return mappedMove;
 }
 
 export function rotateMoveByAuf(move: string, auf: string): string {
-  const face = move[0];
-  const suffix = move.slice(1);
-  const upperFace = face.toUpperCase();
+  const viewRotation =
+    auf === "U" ? "y'"
+      : auf === "U'" ? "y"
+        : auf === "U2" ? "y2"
+          : "";
+  if (!viewRotation) return move;
 
-  const remap = (map: Record<string, string>) => {
-    const mapped = map[upperFace] ?? upperFace;
-    const nextFace = face === upperFace ? mapped : mapped.toLowerCase();
-    return `${nextFace}${suffix}`;
-  };
+  const cacheKey = `${viewRotation}:${move}`;
+  const cached = conjugatedMoveCache.get(cacheKey);
+  if (cached) return cached;
 
-  switch (auf) {
-    case "U":
-      // Treat AUF as a view rotation: U on the state equals y' in the viewer frame.
-      return remap({ F: "L", R: "F", B: "R", L: "B" });
-    case "U'":
-      return remap({ F: "R", R: "B", B: "L", L: "F" });
-    case "U2":
-      return remap({ F: "B", R: "L", B: "F", L: "R" });
-    default:
-      return move;
-  }
+  const inverseRotation =
+    viewRotation === "y'" ? "y"
+      : viewRotation === "y" ? "y'"
+        : "y2";
+  const transformed = applyMoveToFacelets(
+    applyMoveToFacelets(
+      applyMoveToFacelets(MOVE_REFERENCE_FACELETS, viewRotation),
+      move,
+    ),
+    inverseRotation,
+  );
+  const mappedMove = TRACKABLE_MOVES.find(
+    (candidate) => applyMoveToFacelets(MOVE_REFERENCE_FACELETS, candidate) === transformed,
+  ) ?? move;
+
+  conjugatedMoveCache.set(cacheKey, mappedMove);
+  return mappedMove;
 }
 
 export function readCornerOrientations(f: FaceletString): number[] {

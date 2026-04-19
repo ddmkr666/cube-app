@@ -84,6 +84,9 @@ function moveSpec(face: string): MoveSpec | null {
     case "d": return { axis: "y", sign: -1, layers: (coord) => coord <= 0 };
     case "f": return { axis: "z", sign: 1, layers: (coord) => coord >= 0 };
     case "b": return { axis: "z", sign: -1, layers: (coord) => coord <= 0 };
+    case "M": return { axis: "x", sign: -1, layers: (coord) => coord === 0 };
+    case "E": return { axis: "y", sign: -1, layers: (coord) => coord === 0 };
+    case "S": return { axis: "z", sign: 1, layers: (coord) => coord === 0 };
     case "x": return { axis: "x", sign: 1, layers: () => true };
     case "y": return { axis: "y", sign: 1, layers: () => true };
     case "z": return { axis: "z", sign: 1, layers: () => true };
@@ -128,4 +131,26 @@ export function applyMoveToFacelets(facelets: FaceletString, move: string): Face
 
 export function applyMovesToFacelets(facelets: FaceletString, moves: string[]): FaceletString {
   return moves.reduce((state, move) => applyMoveToFacelets(state, move), facelets);
+}
+
+const SINGLE_TURN_BASES = ["U", "R", "F", "D", "L", "B", "u", "r", "f", "d", "l", "b", "M", "E", "S"] as const;
+const MOVE_SUFFIXES = ["", "'", "2"] as const;
+
+export const SOLVE_MODE_TRACKED_MOVES = SINGLE_TURN_BASES.flatMap((base) =>
+  MOVE_SUFFIXES.map((suffix) => `${base}${suffix}`),
+);
+
+export function inferMoveFromFacelets(
+  before: FaceletString,
+  after: FaceletString,
+): string | null {
+  if (!before || !after || before === after) return null;
+
+  for (const move of SOLVE_MODE_TRACKED_MOVES) {
+    if (applyMoveToFacelets(before, move) === after) {
+      return move;
+    }
+  }
+
+  return null;
 }

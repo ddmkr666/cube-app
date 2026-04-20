@@ -90,7 +90,15 @@ export function useCubeConnection(): CubeConnectionState {
     connect: () => service.connect(),
     disconnect: () => service.disconnect(),
     requestFacelets: () => service.requestFacelets(),
-    markSolved: () => service.markSolved(),
+    markSolved: async () => {
+      setFacelets(SOLVED_FACELETS);
+      setFaceletSerial(null);
+      setFaceletTimestamp(null);
+      setLastMove(null);
+      setMoveHistory([]);
+      lastMoveRef.current = null;
+      await service.markSolved();
+    },
     gyroCurrentRef,
     gyroResetRef,
     resetGyro: () => {

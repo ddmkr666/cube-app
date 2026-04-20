@@ -120,8 +120,7 @@ export function App() {
             type="button"
             className="app__mode-button"
             onClick={cube.markSolved}
-            disabled={!connected}
-            title="Physically solve the cube, then click to re-sync the app."
+            title="Click to reset the virtual cube to solved. If a cube is connected, also syncs the hardware."
           >
             Reset Cube
           </button>

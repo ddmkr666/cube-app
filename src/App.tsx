@@ -20,6 +20,7 @@ import { TestPanel } from "./ui/TestPanel";
 import { RawQuaternion } from "./bluetooth/ganCube";
 import { useTestTimes } from "./hooks/useTestTimes";
 import { useSolveMoveHistory } from "./hooks/useSolveMoveHistory";
+import { useGyroCoreCorrection } from "./hooks/useGyroCoreCorrection";
 
 export function App() {
   const [mode, setMode] = useState<"solve" | "trainer" | "test">("solve");
@@ -42,6 +43,8 @@ export function App() {
   const { times, addTime, clearAll, exportCSV } = useSolveTimes();
   const testTimes = useTestTimes();
   const timer = useTimer(scramble.state, helperLastMove, helperSolved, addTime);
+  const { correctionRef: gyroCoreCorrection, resetCorrection: resetGyroCoreCorrection } =
+    useGyroCoreCorrection(cube.lastMove, solveTracking.lastMove);
   const ollTrainer = useOLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const trainer = usePLLTrainer(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
   const ollTest = useOLLTest(cube.moveHistory, cube.gyroCurrentRef, trainerGyroResetRef);
@@ -107,7 +110,7 @@ export function App() {
           <button
             type="button"
             className="app__mode-button"
-            onClick={cube.resetGyro}
+            onClick={() => { cube.resetGyro(); resetGyroCoreCorrection(); }}
             disabled={!connected}
             title="Hold the cube white-side up, green facing you, then click to sync the 3D orientation."
           >
@@ -194,6 +197,7 @@ export function App() {
               facelets={cube.facelets}
               gyroCurrentRef={cube.gyroCurrentRef}
               gyroResetRef={cube.gyroResetRef}
+              gyroCorrectionRef={gyroCoreCorrection}
             />
             <div className="app__overlay-stack">
               {showScramble && <ScrambleDisplay scramble={scramble} />}

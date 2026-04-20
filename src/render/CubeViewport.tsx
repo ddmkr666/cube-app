@@ -13,6 +13,7 @@ interface CubeViewportProps {
   lastMove?: MoveRecord | null;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
+  gyroCorrectionRef?: React.MutableRefObject<THREE.Quaternion>;
   gyroFrame?: "standard" | "yellow-top";
 }
 
@@ -47,6 +48,7 @@ interface GyroRotatorProps {
   lastMove?: MoveRecord | null;
   gyroCurrentRef: React.MutableRefObject<RawQuaternion | null>;
   gyroResetRef: React.MutableRefObject<RawQuaternion | null>;
+  gyroCorrectionRef?: React.MutableRefObject<THREE.Quaternion>;
   gyroFrame: "standard" | "yellow-top";
 }
 
@@ -54,7 +56,7 @@ interface GyroRotatorProps {
  * Wraps Cube3D in a group whose rotation tracks the physical cube's gyro.
  * Runs inside the R3F Canvas so it can use useFrame without re-rendering React.
  */
-function GyroRotator({ facelets, faceColors, lastMove, gyroCurrentRef, gyroResetRef, gyroFrame }: GyroRotatorProps) {
+function GyroRotator({ facelets, faceColors, lastMove, gyroCurrentRef, gyroResetRef, gyroCorrectionRef, gyroFrame }: GyroRotatorProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
@@ -68,6 +70,12 @@ function GyroRotator({ facelets, faceColors, lastMove, gyroCurrentRef, gyroReset
       _target.copy(_ref).invert().multiply(_current);
     } else {
       _target.copy(_current);
+    }
+
+    // Cancel gyro drift from wide/slice moves (r, M, etc.) whose physical
+    // rotation of the core is not a real cube orientation change.
+    if (gyroCorrectionRef?.current) {
+      _target.multiply(gyroCorrectionRef.current.clone().invert());
     }
 
     if (gyroFrame === "yellow-top") {
@@ -99,6 +107,7 @@ export function CubeViewport({
   lastMove,
   gyroCurrentRef,
   gyroResetRef,
+  gyroCorrectionRef,
   gyroFrame = "standard",
 }: CubeViewportProps) {
   return (
@@ -116,6 +125,7 @@ export function CubeViewport({
           lastMove={lastMove}
           gyroCurrentRef={gyroCurrentRef}
           gyroResetRef={gyroResetRef}
+          gyroCorrectionRef={gyroCorrectionRef}
           gyroFrame={gyroFrame}
         />
         <OrbitControls enablePan={false} minDistance={5.5} maxDistance={13} />

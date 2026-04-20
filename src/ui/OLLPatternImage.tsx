@@ -57,11 +57,13 @@ export function OLLPatternImage({ corners, edges, size = 140 }: Props) {
   //   UFR: CW=R, CCW=F    →  R-tab yellow if UFR===1, F-tab yellow if UFR===2
   //   UFL: CW=F, CCW=L    →  F-tab yellow if UFL===1, L-tab yellow if UFL===2
 
-  // Back tabs (above U, left-to-right): UBR-B, UB-B, UBL-B
+  // Back tabs (above U, left-to-right): UBL-B, UB-B, UBR-B.
+  // The back face is viewed from the opposite direction in the net, so its
+  // sticker order is mirrored compared with the piece order around U.
   const backTabs = [
-    isY(UBR === 1),
-    isY(UB === 0),
     isY(UBL === 2),
+    isY(UB === 0),
+    isY(UBR === 1),
   ];
   // Front tabs (below U, left-to-right): UFL-F, UF-F, UFR-F
   const frontTabs = [

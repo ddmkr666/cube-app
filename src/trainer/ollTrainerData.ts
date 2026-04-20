@@ -82,7 +82,7 @@ export const OLL_TRAINER_CASES: OLLTrainerCase[] = [
     phase: "corners",
     algorithm: "R U R' U R U' R' U R U2 R'",
     description: "No corners oriented; headlights on left and right",
-    targetCornerState: [2, 1, 2, 1],
+    targetCornerState: [1, 2, 1, 2],
     targetEdgeState: [1, 1, 1, 1],
   },
   {
@@ -90,8 +90,8 @@ export const OLL_TRAINER_CASES: OLLTrainerCase[] = [
     displayName: "Pi (Bruno)",
     phase: "corners",
     algorithm: "R U2 R2 U' R2 U' R2 U2 R",
-    description: "No corners oriented; headlights on front and back",
-    targetCornerState: [1, 2, 1, 2],
+    description: "Headlights on the left, non-headlights on the right",
+    targetCornerState: [1, 1, 2, 2],
     targetEdgeState: [1, 1, 1, 1],
   },
   {

@@ -7,7 +7,14 @@ import { HistoryPanel } from "./HistoryPanel";
 import { TrainerPanel } from "./TrainerPanel";
 import { TestPanel } from "./TestPanel";
 import { MobileOLLTrainerDisplay, MobilePLLTrainerDisplay, MobileOLLTestDisplay } from "./MobileTrainerDisplay";
+import { formatTime } from "./TimerDisplay";
 import { LayoutProps } from "./DesktopLayout";
+
+function ao5(times: LayoutProps["times"]): number | null {
+  if (times.length < 5) return null;
+  const slice = times.slice(-5).map(t => t.elapsed).sort((a, b) => a - b);
+  return slice.slice(1, -1).reduce((s, v) => s + v, 0) / 3;
+}
 
 export function MobileLayout({
   mode, setMode,
@@ -148,6 +155,48 @@ export function MobileLayout({
           </div>
         )}
       </main>
+
+      {/* ── Solve strip (solve mode only) ──────────────────── */}
+      {!trainerActive && !testActive && (
+        <div className="mobile-solve-strip">
+          <div className="mobile-solve-strip__scramble">
+            {!connected ? (
+              <span className="mobile-solve-strip__hint">Connect cube to scramble</span>
+            ) : scramble.state === "idle" ? (
+              cube.solved
+                ? <button className="mobile-solve-strip__btn" onClick={scramble.generate}>New Scramble</button>
+                : <span className="mobile-solve-strip__hint">Solve the cube first</span>
+            ) : scramble.state === "done" ? (
+              <button className="mobile-solve-strip__btn" onClick={scramble.generate}>New Scramble</button>
+            ) : (
+              <>
+                <span className="mobile-solve-strip__hint mono">
+                  {scramble.currentIndex + 1} / {scramble.moves.length}
+                </span>
+                <button className="mobile-solve-strip__btn mobile-solve-strip__btn--secondary" onClick={scramble.clear}>
+                  Abort
+                </button>
+              </>
+            )}
+          </div>
+          <div className="mobile-solve-strip__stats mono">
+            {times.length > 0 && (
+              <>
+                <span>
+                  <span className="mobile-solve-strip__stat-label">Last </span>
+                  <strong>{formatTime(times[times.length - 1].elapsed)}</strong>
+                </span>
+                {ao5(times) !== null && (
+                  <span>
+                    <span className="mobile-solve-strip__stat-label">ao5 </span>
+                    <strong>{formatTime(ao5(times)!)}</strong>
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Bottom nav ─────────────────────────────────────── */}
       <nav className="mobile-nav" aria-label="App mode">
